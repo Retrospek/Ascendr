@@ -11,8 +11,10 @@ class arm():
         self.location = np.array([torso_loc[0] + length * np.cos(self.angle), torso_loc[1] + length * np.sin(self.angle)])
         self.grabbing = grabbing
 
-    def grab(self):
-        self.grabbing = True
+    def grab(self, holds): # Need to make sure that the hand is close to a hold or "enough"
+        for hold in holds:
+            if np.linalg.norm(self.location - hold) < 2:
+                self.grabbing = True
 
     def release(self):
         self.grabbing = False
@@ -26,8 +28,8 @@ class climbr:
         self.torso = torso(location = start_loc)
         self.arms = [arm(length=arm_lengths[i], angle=arm_degrees[i]) for i in range(len(arm_lengths))] # 0 = Right and 1 = Left <= Indices
 
-    def grab(self, side):
-        self.arms[side].grab()
+    def grab(self, side, holds):
+        self.arms[side].grab(holds)
 
     def release(self, side):
         self.arms[side].release()
@@ -58,25 +60,36 @@ class climbr:
 
 
 # --- Create a climbr instance (with one arm) ---
-climber_obj = climbr(start_loc=np.array([0, 0]), arm_lengths=np.array([2]), arm_degrees=np.array([45]))
+climber_obj = climbr(start_loc=np.array([0, 0]),
+                     arm_lengths=np.array([2]),
+                     arm_degrees=np.array([45]))
 
-def render_climbr(ax, climber):
+# --- Generate 40 integer (x,y) hold positions ---
+num_samples = 40
+int_coords = np.random.randint(low=-10, high=11, size=(num_samples, 2))
+
+def render_climbr(ax, climber, holds):
     ax.clear()
     torso_loc = climber.torso.location
+
+    # Plot holds (green circles)
+    ax.plot(holds[:, 0], holds[:, 1], 'go', markersize=6, label="Holds")
+
+    # Plot torso
     ax.plot(torso_loc[0], torso_loc[1], 'bo', markersize=10, label="Torso")
-    
-    # Use the stored arm location if grabbing,
-    # otherwise, simply compute the endpoint without updating the stored location.
+
+    # Compute or use the arm endpoint
     if climber.arms[0].grabbing:
         endpoint = climber.arms[0].location
     else:
-        theta = climber.arms[0].angle  # already in radians
+        theta = climber.arms[0].angle
         endpoint = torso_loc + climber.arms[0].length * np.array([np.cos(theta), np.sin(theta)])
-        # Do NOT update climber.arms[0].location here!
-    
-    ax.plot([torso_loc[0], endpoint[0]], [torso_loc[1], endpoint[1]], 'r-', lw=2, label="Arm")
+
+    # Plot the arm line and endpoint
+    ax.plot([torso_loc[0], endpoint[0]], [torso_loc[1], endpoint[1]],
+            'r-', lw=2, label="Arm")
     ax.plot(endpoint[0], endpoint[1], 'ko', markersize=6)
-    
+
     ax.set_xlim(-10, 10)
     ax.set_ylim(-10, 10)
     ax.set_xlabel("X")
@@ -86,12 +99,14 @@ def render_climbr(ax, climber):
     ax.legend()
     plt.draw()
 
+
 # --- Set Up the Figure and Widgets ---
 fig, ax = plt.subplots()
 plt.subplots_adjust(left=0.25, bottom=0.35)
-render_climbr(ax, climber_obj)
 
-# Slider for Angle Change
+# Render once at the start
+render_climbr(ax, climber_obj, int_coords)
+
 ax_angle = plt.axes([0.25, 0.25, 0.65, 0.03])
 angle_slider = Slider(
     ax=ax_angle,
@@ -101,37 +116,30 @@ angle_slider = Slider(
     valinit=0,
 )
 
-# Button to Toggle Grabbing for the Arm
 ax_button = plt.axes([0.25, 0.15, 0.15, 0.04])
 grab_button = Button(ax_button, 'Toggle Grab')
 
 def update(val):
     angle_change = angle_slider.val
-    # Shift the arm using the current angle change.
     climber_obj.shift_arm(0, angle_change)
-    render_climbr(ax, climber_obj)
-    # Reset the slider to 0 after applying the change.
+    render_climbr(ax, climber_obj, int_coords)
     angle_slider.reset()
 
 angle_slider.on_changed(update)
 
 def toggle_grab(event):
-    # Toggle the grabbing state.
     if climber_obj.arms[0].grabbing:
-        # When releasing, we may want to keep the last locked location.
         climber_obj.release(0)
         print("Arm released")
     else:
-        # When grabbing, lock in the current computed arm location.
-        # Compute the current arm endpoint from the torso.
+        # Lock the arm endpoint
         torso_loc = climber_obj.torso.location
-        theta = climber_obj.arms[0].angle  # already in radians
+        theta = climber_obj.arms[0].angle
         locked_endpoint = torso_loc + climber_obj.arms[0].length * np.array([np.cos(theta), np.sin(theta)])
         climber_obj.arms[0].location = locked_endpoint
-        climber_obj.grab(0)
+        climber_obj.grab(0, int_coords)
         print("Arm grabbed")
-    render_climbr(ax, climber_obj)
-
+    render_climbr(ax, climber_obj, int_coords)
 
 grab_button.on_clicked(toggle_grab)
 
