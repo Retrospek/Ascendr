@@ -15,6 +15,7 @@ if __name__ == "__main__":
         state, reward, done, info, _ = env.step(action)
         rewards.append(reward)
         env.render()
+        env.close()
         if done:
             print("Episode finished with reward", reward)
             break
