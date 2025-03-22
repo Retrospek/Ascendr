@@ -3,7 +3,7 @@ import numpy as np
 from climbr import *
 import matplotlib.pyplot as plt
 
-class lavaFloor(gym.Env):
+class JustDoIt(gym.Env):
     def __init__(self, gridDim = 50, holds = np.array([]), angleChange = math.radians(8)):
         self.gridDim = gridDim
         self.angleChange = angleChange
@@ -19,13 +19,12 @@ class lavaFloor(gym.Env):
     
         self.observation_space = gym.spaces.Dict(
             {
-                "agent": self.climbr.torso.location,
-                "arm_location": self.climbr.arms[0].location,
-                "holds": self.holds,
-                "target_hold": self.target_hold,
-                "distance_from_target_TORSO": np.linalg.norm(self.target_hold - self.climbr.torso.location),
-                "distance_from_target_ARM": np.linalg.norm(self.target_hold - self.climber.arms[0].location) # We are experimenting with one arm, so we'll edit this later lmaoo
-
+                "torso_location": gym.spaces.Box(low=-25, high=25, shape=(2,), dtype=np.float32),
+                "arm_location": gym.spaces.Box(low=-25, high=25, shape=(2,), dtype=np.float32),
+                "holds": gym.spaces.Box(low=-25, high=25, shape=(len(self.holds), 2), dtype=np.float32),
+                "target_hold": gym.spaces.Box(low=-25, high=25, shape=(2,), dtype=np.float32),
+                "distance_from_target_TORSO": gym.spaces.Box(low=0, high=np.inf, shape=(1,), dtype=np.float32),
+                "distance_from_target_ARM": gym.spaces.Box(low=0, high=np.inf, shape=(1,), dtype=np.float32)  # We are experimenting with one arm, so we'll edit this later
             }
         )
 
@@ -35,34 +34,24 @@ class lavaFloor(gym.Env):
             "holds": self.holds,
             "target_hold": self.target_hold,
             "distance_from_target_TORSO": np.linalg.norm(self.target_hold - self.climbr.torso.location),
-            "distance_from_target_ARM": np.linalg.norm(self.target_hold - self.climber.arms[0].location)
+            "distance_from_target_ARM": np.linalg.norm(self.target_hold - self.climbr.arms[0].location)
         }
-    
+
+        self.fig, self.ax = plt.subplots()
+
     def reset(self):
         # Now I need to reset the environment from above
         self.climbr = climbr()
         self.target_hold = self.holds[np.random.randint(0, len(self.holds))]
         self.rewards = []
 
-        self.observation_space = gym.spaces.Dict(
-            {
-                "agent": self.climbr.torso.location,
-                "arm_location": self.climbr.arms[0].location,
-                "holds": self.holds,
-                "target_hold": self.target_hold,
-                "distance_from_target_TORSO": np.linalg.norm(self.target_hold - self.climbr.torso.location),
-                "distance_from_target_ARM": np.linalg.norm(self.target_hold - self.climber.arms[0].location) # We are experimenting with one arm, so we'll edit this later lmaoo
-
-            }
-        )
-
         self.inner_state = {
             "torso_location": self.climbr.torso.location,
             "arm_location": self.climbr.arms[0].location,
             "holds": self.holds,
             "target_hold": self.target_hold,
             "distance_from_target_TORSO": np.linalg.norm(self.target_hold - self.climbr.torso.location),
-            "distance_from_target_ARM": np.linalg.norm(self.target_hold - self.climber.arms[0].location)
+            "distance_from_target_ARM": np.linalg.norm(self.target_hold - self.climbr.arms[0].location)
         }
 
     def step(self, action): # Remember the action is typically sampled stochastically until the policy has been refine by the optimal q values, and then the policy pi will behave greedily
@@ -79,9 +68,10 @@ class lavaFloor(gym.Env):
         if action == 1:
             self.climbr.arms[0].release()
         if action == 2:
-            self.climbr.shift_arm(self, 0, self.angleChange)
+            self.climbr.shift_arm(0, self.angleChange)
         
-        if self.climbr.torso.location == self.target_hold:
+
+        if self.climbr.torso.location[0] == self.target_hold[0] and self.climbr.torso.location[1] == self.target_hold[1]:
             end = True
             reward += 100
 
@@ -101,58 +91,51 @@ class lavaFloor(gym.Env):
         self.inner_state['torso_location'] = self.climbr.torso.location
         self.inner_state['arm_location'] = self.climbr.arms[0].location
         self.inner_state['distance_from_target_TORSO'] = np.linalg.norm(self.target_hold - self.climbr.torso.location)
-        self.inner_state['distance_from_target_ARM'] = np.linalg.norm(self.target_hold - self.climber.arms[0].location)
+        self.inner_state['distance_from_target_ARM'] = np.linalg.norm(self.target_hold - self.climbr.arms[0].location)
 
         self.rewards.append(reward) #For Future Analysis
 
-        return self.inner_state, reward, end
+        return self.inner_state, reward, end, {}, {} #Two dicts on the right are pretty useless
 
     def render(self):
-        
-        # Turn on interactive mode for low-latency updates
-        plt.ion()
-        
-        # Create a new figure and axis (or reuse an existing one if you prefer)
-        fig, ax = plt.subplots()
-        ax.clear()
-        
-        # Get the current torso location from the climbr object
+        # Clear the axis for a fresh plot
+        self.ax.clear()
+
+        # Plot holds
+        if self.holds.size > 0:
+            self.ax.plot(self.holds[:, 0], self.holds[:, 1], 'go', markersize=6, label="Holds")
+
+        # Plot torso
         torso_loc = self.climbr.torso.location
-        
-        # Ensure that holds is a NumPy array (in case it was provided as a list)
-        holds = self.holds if isinstance(self.holds, np.ndarray) else np.array(self.holds)
-        
-        # Plot holds as green circles (if there are any holds)
-        if holds.size > 0:
-            ax.plot(holds[:, 0], holds[:, 1], 'go', markersize=6, label="Holds")
-        
-        # Plot the torso as a blue circle
-        ax.plot(torso_loc[0], torso_loc[1], 'bo', markersize=10, label="Torso")
-        
-        # Compute the arm endpoint: if grabbing, use the current arm location; 
-        # otherwise, compute it from the arm's angle and length relative to the torso.
+        self.ax.plot(torso_loc[0], torso_loc[1], 'bo', markersize=10, label="Torso")
+
+        # Plot arm
         if self.climbr.arms[0].grabbing:
             endpoint = self.climbr.arms[0].location
         else:
             theta = self.climbr.arms[0].angle
             endpoint = torso_loc + self.climbr.arms[0].length * np.array([np.cos(theta), np.sin(theta)])
-        
-        # Draw the arm as a red line from the torso to the endpoint, and plot the endpoint as a black dot
-        ax.plot([torso_loc[0], endpoint[0]], [torso_loc[1], endpoint[1]], 'r-', lw=2, label="Arm")
-        ax.plot(endpoint[0], endpoint[1], 'ko', markersize=6)
-        
-        # Set axis limits and labels
-        ax.set_xlim(-10, 10)
-        ax.set_ylim(-10, 10)
-        ax.set_xlabel("X")
-        ax.set_ylabel("Y")
-        ax.set_title("Climber State (1 Arm)")
-        ax.grid(True)
-        ax.legend()
-        
-        # Draw and pause briefly to update the plot
-        plt.draw()
+        self.ax.plot([torso_loc[0], endpoint[0]],
+                    [torso_loc[1], endpoint[1]],
+                    'r-', lw=2, label="Arm")
+        self.ax.plot(endpoint[0], endpoint[1], 'ko', markersize=6)
+
+        # Axes limits
+        self.ax.set_xlim(-25, 25)
+        self.ax.set_ylim(-25, 25)
+        self.ax.set_xlabel("X")
+        self.ax.set_ylabel("Y")
+        self.ax.set_title("Climber State (1 Arm)")
+        self.ax.grid(True)
+        self.ax.legend()
+
+        # Update the figure without blocking
+        self.fig.canvas.draw()
         plt.pause(0.001)
+
+    def close(self):
+        plt.ioff()
+        plt.close(self.fig)
 
 
 
