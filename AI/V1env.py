@@ -4,7 +4,7 @@ from climbr import *
 import matplotlib.pyplot as plt
 
 class JustDoIt(gym.Env):
-    def __init__(self, gridDim = 50, holds = np.array([]), angleChange = math.radians(8)):
+    def __init__(self, gridDim = 50, holds = np.column_stack((np.full((100,), 2), np.linspace(-25, 25, 100))), angleChange = 10):
         self.gridDim = gridDim
         self.angleChange = angleChange
         target_idx = np.random.randint(0, len(holds) + 1)
@@ -14,7 +14,7 @@ class JustDoIt(gym.Env):
         self.climbr = climbr() # Let's just use default characteristics
         self.rewards = []
         #CHANGING THIS \/ in the future
-        self.action_space = gym.spaces.Discrete(3) # 0: Hold, 1:Let Go, 2:Shifting(Implicitely this takes care of the 2 states of the arm grabbing or not holding innately)
+        self.action_space = gym.spaces.Discrete(4) # 0: Hold, 1:Let Go, 2:Shifting(Implicitely this takes care of the 2 states of the arm grabbing or not holding innately)
         # In reality it is 4 actions ^^^^^^, but the other two actions are built into one function
     
         self.observation_space = gym.spaces.Dict(
@@ -39,6 +39,15 @@ class JustDoIt(gym.Env):
 
         self.fig, self.ax = plt.subplots()
 
+    def q_table_state_discretizer(self):
+        """
+        States:
+        0 = Below Target
+        1 = Above Target
+        2 = Holding Target
+        3 = Not Holding Target
+        """
+
     def reset(self):
         # Now I need to reset the environment from above
         self.climbr = climbr()
@@ -53,7 +62,8 @@ class JustDoIt(gym.Env):
             "distance_from_target_TORSO": np.linalg.norm(self.target_hold - self.climbr.torso.location),
             "distance_from_target_ARM": np.linalg.norm(self.target_hold - self.climbr.arms[0].location)
         }
-
+        return self.inner_state, {}
+    
     def step(self, action): # Remember the action is typically sampled stochastically until the policy has been refine by the optimal q values, and then the policy pi will behave greedily
         end = False
         reward = 0
@@ -69,7 +79,8 @@ class JustDoIt(gym.Env):
             self.climbr.arms[0].release()
         if action == 2:
             self.climbr.shift_arm(0, self.angleChange)
-        
+        if action == 3:
+            self.climbr.shift_arm(0, -1 * self.angleChange)
 
         if self.climbr.torso.location[0] == self.target_hold[0] and self.climbr.torso.location[1] == self.target_hold[1]:
             end = True
@@ -95,7 +106,7 @@ class JustDoIt(gym.Env):
 
         self.rewards.append(reward) #For Future Analysis
 
-        return self.inner_state, reward, end, {}, {} #Two dicts on the right are pretty useless
+        return self.inner_state, reward, end, {}, {}
 
     def render(self):
         # Clear the axis for a fresh plot
@@ -136,11 +147,3 @@ class JustDoIt(gym.Env):
     def close(self):
         plt.ioff()
         plt.close(self.fig)
-
-
-
-
-
-
-
-
