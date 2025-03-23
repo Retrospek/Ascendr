@@ -109,18 +109,14 @@ class JustDoIt(gym.Env):
         return self.inner_state, reward, end, {}, {}
 
     def render(self):
-        # Clear the axis for a fresh plot
         self.ax.clear()
 
-        # Plot holds
         if self.holds.size > 0:
             self.ax.plot(self.holds[:, 0], self.holds[:, 1], 'go', markersize=6, label="Holds")
 
-        # Plot torso
         torso_loc = self.climbr.torso.location
         self.ax.plot(torso_loc[0], torso_loc[1], 'bo', markersize=10, label="Torso")
 
-        # Plot arm
         if self.climbr.arms[0].grabbing:
             endpoint = self.climbr.arms[0].location
         else:
@@ -131,7 +127,6 @@ class JustDoIt(gym.Env):
                     'r-', lw=2, label="Arm")
         self.ax.plot(endpoint[0], endpoint[1], 'ko', markersize=6)
 
-        # Axes limits
         self.ax.set_xlim(-25, 25)
         self.ax.set_ylim(-25, 25)
         self.ax.set_xlabel("X")
@@ -140,7 +135,6 @@ class JustDoIt(gym.Env):
         self.ax.grid(True)
         self.ax.legend()
 
-        # Update the figure without blocking
         self.fig.canvas.draw()
         plt.pause(0.001)
 
