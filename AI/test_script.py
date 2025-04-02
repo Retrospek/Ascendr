@@ -7,6 +7,7 @@ if __name__ == "__main__":
 
     env = JustDoIt()
     state = env.reset()
+    accum_reward = 0
     rewards = []
 
     done = False
@@ -14,7 +15,8 @@ if __name__ == "__main__":
         action = env.action_space.sample()
 
         state, reward, done, info, _ = env.step(action)
-        rewards.append(reward)
+        accum_reward += reward
+        rewards.append(accum_reward)
 
         env.render()
 

@@ -90,9 +90,9 @@ class JustDoIt(gym.Env):
         new_distance_from_target_TORSO = np.linalg.norm(self.target_hold - self.climbr.torso.location)
         reward += (original_distance_from_target_TORSO - new_distance_from_target_TORSO) * 2
 
-        original_distance_from_target_ARM = self.inner_state['distance_from_target_ARM']
-        new_distance_from_target_ARM = np.linalg.norm(self.target_hold - self.climbr.arms[0].location)
-        reward += (original_distance_from_target_ARM - new_distance_from_target_ARM) * 2
+        #original_distance_from_target_ARM = self.inner_state['distance_from_target_ARM']
+        #new_distance_from_target_ARM = np.linalg.norm(self.target_hold - self.climbr.arms[0].location)
+        #reward += (original_distance_from_target_ARM - new_distance_from_target_ARM) * 2
 
         if(np.linalg.norm(self.target_hold - self.climbr.arms[0].location) <= self.climbr.arms[0].length): # Close to completion reward
            reward += 10
