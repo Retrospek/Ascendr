@@ -1,8 +1,20 @@
 import numpy as np
 import matplotlib.pyplot as plt
+
+import torch
+import torch.nn as nn
+import torch.optim as optim
+
 from V1env import JustDoIt 
+from DQNagent import *
+
 
 if __name__ == "__main__":
+
+    target = DQN()
+    target.load_state_dict(torch.load('target_state_dict.pth'))
+    target.eval()
+
     holds = np.column_stack((np.full((100,), 2), np.linspace(-25, 25, 100)))
 
     env = JustDoIt()
@@ -12,7 +24,8 @@ if __name__ == "__main__":
 
     done = False
     for _ in range(200):
-        action = env.action_space.sample()
+        with torch.no_grad():
+            action = torch.argmax(target(state))
 
         state, reward, done, info, _ = env.step(action)
         accum_reward += reward
