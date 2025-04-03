@@ -84,7 +84,7 @@ class JustDoIt(gym.Env):
 
             if(arm_location[0] > 25 or arm_location[1] > 25 or arm_location[0] < -25 or arm_location[1] < -25):
                 end = True
-                reward = -10000
+                reward = -1000
             self.energy += -0.75
         if action == 1:
             self.climbr.arms[0].release()
@@ -108,15 +108,20 @@ class JustDoIt(gym.Env):
 
         average_body_delta = (torso_distance_delta + arm_distance_delta) / 2.0
 
-        reward += 5 * np.sign(average_body_delta) # -1 is makes it better for the negative delta because that means closer
+        reward += np.sign(average_body_delta) * np.sqrt(torso_distance_delta**2 + arm_distance_delta**2) # -1 is makes it better for the negative delta because that means closer
 
-        if(np.linalg.norm(self.target_hold - self.climbr.arms[0].location) <= self.climbr.arms[0].length): # Close to completion reward
+        if(np.linalg.norm(self.target_hold - self.climbr.arms[0].location) <= 1.5): # Within Arm Range
            end = True
-           reward += 10000
+           reward += 500
 
-        if self.energy <= 0:
-            end = True
-            reward += -10000
+        else:
+            if self.energy <= 0:
+                end = True
+                reward += -100
+        
+        # Speed Up Reward logic
+        reward += -1
+
 
         self.inner_state['torso_location'] = self.climbr.torso.location
         self.inner_state['arm_location'] = self.climbr.arms[0].location

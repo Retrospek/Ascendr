@@ -72,7 +72,7 @@ def train(policy_network, target_network,
           epsilon, epsilon_decay, gamma, gamma_decay, criterion, optimizer):
 
     all_reward_sequences = []  # For graphing down the line
-    replaysampler = ReplayMemory(capacity=1000)
+    replaysampler = ReplayMemory(capacity=2500)
     for episode in range(episodes):
         accumulated_reward = 0
 
@@ -109,7 +109,7 @@ def train(policy_network, target_network,
                 replaysampler.push(*transition)
 
             # If we have enough samples, perform a training step.
-            if(t % 10 == 0):
+            if(t % 5 == 0):
                 if len(replaysampler) >= batch_size:
                     sampled_batch_experiences = replaysampler.sample(batch_size)
                     # Unpack the transitions into batches.
@@ -186,16 +186,16 @@ target_net.load_state_dict(policy_net.state_dict())  # Copy the weights from the
 
 if __name__ == "__main__":
     # 2.) Training Loop
-    episodes = 50
-    time_steps = 500
-    BATCH_SIZE = 64
-    EPSILON = 1
-    EPSILON_DECAY = 0.9998
-    GAMMA = 0.75
+    episodes = 1000
+    time_steps = 1000
+    BATCH_SIZE = 32
+    EPSILON = 0.9999
+    EPSILON_DECAY = 0.99998
+    GAMMA = 0.25
     GAMMA_DECAY = 0.95
-    LR = 1e-4
+    LR = 1e-3
     CRITERION = nn.SmoothL1Loss()
-    OPTIMIZER = optim.Adam(policy_net.parameters(), lr=LR)
+    OPTIMIZER = optim.AdamW(policy_net.parameters(), lr=LR, amsgrad=True)
 
     policy_network, target_network, all_reward_sequences = train(
         policy_network=policy_net,
