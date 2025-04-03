@@ -4,12 +4,14 @@ from climbr import *
 import matplotlib.pyplot as plt
 
 class JustDoIt(gym.Env):
-    def __init__(self, gridDim = 50, holds = np.column_stack((np.full((100,), 2), np.linspace(-25, 25, 100))), angleChange = 10):
+    def __init__(self, gridDim = 50, holds = np.column_stack((np.full((100,), 2), np.linspace(-25, 25, 100))), angleChange = 10, energy=500):
         self.gridDim = gridDim
         self.angleChange = angleChange
-        target_idx = np.random.randint(0, len(holds) + 1)
+        target_idx = np.random.randint(0, len(holds))
         self.target_hold = holds[target_idx] # The last possible hold
         self.holds = holds
+        self.energy = energy 
+
 
         self.climbr = climbr() # Let's just use default characteristics
         self.rewards = []
@@ -84,20 +86,26 @@ class JustDoIt(gym.Env):
 
         if self.climbr.torso.location[0] == self.target_hold[0] and self.climbr.torso.location[1] == self.target_hold[1]:
             end = True
-            reward += 100
+            reward += 10000
 
         original_distance_from_target_TORSO = self.inner_state['distance_from_target_TORSO']
         new_distance_from_target_TORSO = np.linalg.norm(self.target_hold - self.climbr.torso.location)
-        reward += (original_distance_from_target_TORSO - new_distance_from_target_TORSO) * 2
+        if(original_distance_from_target_TORSO > new_distance_from_target_TORSO):
+            reward += 1
 
         #original_distance_from_target_ARM = self.inner_state['distance_from_target_ARM']
         #new_distance_from_target_ARM = np.linalg.norm(self.target_hold - self.climbr.arms[0].location)
         #reward += (original_distance_from_target_ARM - new_distance_from_target_ARM) * 2
 
-        if(np.linalg.norm(self.target_hold - self.climbr.arms[0].location) <= self.climbr.arms[0].length): # Close to completion reward
-           reward += 10
+        #if(np.linalg.norm(self.target_hold - self.climbr.arms[0].location) <= self.climbr.arms[0].length): # Close to completion reward
+        #   reward += 50
 
-        reward += -1 # Incorporate some speed factor
+        if(self.energy == 0):
+            end = True
+            reward = -500
+
+        self.energy -= 1 # Incorporate some speed factor
+        reward -= 1
 
         self.inner_state['torso_location'] = self.climbr.torso.location
         self.inner_state['arm_location'] = self.climbr.arms[0].location

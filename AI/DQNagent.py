@@ -39,7 +39,7 @@ class DQN(nn.Module):
         out = self.fc2(out)
         out = self.relu(out)
         out = self.fc3(out)
-        out = self.relu(out)  # This part is actually pretty weird, but the policy is what generates the Q-values for every possible action and then we sample using softmax
+         # This part is actually pretty weird, but the policy is what generates the Q-values for every possible action and then we sample using softmax
         return out
 
 """
@@ -69,7 +69,7 @@ def train(policy_network, target_network,
           epsilon, epsilon_decay, gamma, gamma_decay, criterion, optimizer):
 
     all_reward_sequences = []  # For graphing down the line
-    replaysampler = ReplayMemory(capacity=250)
+    replaysampler = ReplayMemory(capacity=1000)
     for episode in range(episodes):
         accumulated_reward = 0
         episode_reward = []  # Start an empty list for episode rewards
@@ -103,32 +103,33 @@ def train(policy_network, target_network,
                 replaysampler.push(*transition)
 
             # If we have enough samples, perform a training step.
-            if len(replaysampler) >= batch_size:
-                sampled_batch_experiences = replaysampler.sample(batch_size)
-                # Unpack the transitions into batches.
-                batch_states, batch_actions, batch_rewards, batch_next_states, batch_dones = zip(*sampled_batch_experiences)
-                
-                batch_states_tensor = torch.tensor(batch_states, dtype=torch.float32, device=device)
-                batch_actions_tensor = torch.tensor(batch_actions, dtype=torch.long, device=device)
-                batch_rewards_tensor = torch.tensor(batch_rewards, dtype=torch.float32, device=device)
-                batch_next_states_tensor = torch.tensor(batch_next_states, dtype=torch.float32, device=device)
-                batch_dones_tensor = torch.tensor(batch_dones, dtype=torch.float32, device=device)
-                
-                # Compute Q-values for current states and gather the Q-values for the actions taken.
-                q_values = policy_network(batch_states_tensor)
-                q_values = q_values.gather(1, batch_actions_tensor.unsqueeze(1)).squeeze(1)
-                
-                # Compute target Q-values using the target network.
-                with torch.no_grad():
-                    next_q_values = target_network(batch_next_states_tensor)
-                    max_next_q_values = next_q_values.max(1)[0]
-                    target_q_values = batch_rewards_tensor + gamma * max_next_q_values * (1 - batch_dones_tensor)
-                
-                loss = criterion(q_values, target_q_values)
-                
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
+            if(t % 10 == 0):
+                if len(replaysampler) >= batch_size:
+                    sampled_batch_experiences = replaysampler.sample(batch_size)
+                    # Unpack the transitions into batches.
+                    batch_states, batch_actions, batch_rewards, batch_next_states, batch_dones = zip(*sampled_batch_experiences)
+                    
+                    batch_states_tensor = torch.tensor(batch_states, dtype=torch.float32, device=device)
+                    batch_actions_tensor = torch.tensor(batch_actions, dtype=torch.long, device=device)
+                    batch_rewards_tensor = torch.tensor(batch_rewards, dtype=torch.float32, device=device)
+                    batch_next_states_tensor = torch.tensor(batch_next_states, dtype=torch.float32, device=device)
+                    batch_dones_tensor = torch.tensor(batch_dones, dtype=torch.float32, device=device)
+                    
+                    # Compute Q-values for current states and gather the Q-values for the actions taken.
+                    q_values = policy_network(batch_states_tensor)
+                    q_values = q_values.gather(1, batch_actions_tensor.unsqueeze(1)).squeeze(1)
+                    
+                    # Compute target Q-values using the target network.
+                    with torch.no_grad():
+                        next_q_values = target_network(batch_next_states_tensor)
+                        max_next_q_values = next_q_values.max(1)[0]
+                        target_q_values = batch_rewards_tensor + gamma * max_next_q_values * (1 - batch_dones_tensor)
+                    
+                    loss = criterion(q_values, target_q_values)
+                    
+                    optimizer.zero_grad()
+                    loss.backward()
+                    optimizer.step()
 
             accumulated_reward += reward
             episode_reward.append(accumulated_reward)
@@ -140,11 +141,10 @@ def train(policy_network, target_network,
                 break
 
         epsilon *= epsilon_decay
-        gamma *= gamma_decay  # Note: Typically gamma remains fixed; adjust as needed.
+        #gamma *= gamma_decay  Note: Typically gamma remains fixed; adjust as needed.
 
         all_reward_sequences.append(episode_reward)
         target_network.load_state_dict(policy_network.state_dict())
-        print(f"Episode {episode} Reward: {episode_reward}")
     return policy_network, target_network, all_reward_sequences
 
 
@@ -174,37 +174,66 @@ state_dim = flattened_obs_space.shape[0]
 
 policy_net = DQN(state_dim=state_dim, action_dim=action_dim).to(device)
 target_net = DQN(state_dim=state_dim, action_dim=action_dim).to(device)
-
 target_net.load_state_dict(policy_net.state_dict())  # Copy the weights from the policy network to the target network
 
-# 2.) Training Loop
+if __name__ == "__main__":
+    # 2.) Training Loop
+    episodes = 500
+    time_steps = 500
+    BATCH_SIZE = 64
+    EPSILON = 0.999
+    EPSILON_DECAY = 0.95
+    GAMMA = 0.75
+    GAMMA_DECAY = 0.95
+    LR = 0.001
+    CRITERION = nn.SmoothL1Loss()
+    OPTIMIZER = optim.Adam(policy_net.parameters(), lr=LR)
 
-episodes = 10
-time_steps = 1000
-BATCH_SIZE = 32
-EPSILON = 0.15
-EPSILON_DECAY = 0.98
-GAMMA = 0.75
-GAMMA_DECAY = 0.95
-LR = 0.001
-CRITERION = nn.MSELoss()
-OPTIMIZER = optim.Adam(policy_net.parameters(), lr=LR)
+    policy_network, target_network, all_reward_sequences = train(
+        policy_network=policy_net,
+        target_network=target_net,
+        episodes=episodes,
+        time_steps=time_steps,
+        batch_size=BATCH_SIZE,
+        epsilon=EPSILON,
+        epsilon_decay=EPSILON_DECAY,
+        gamma=GAMMA,
+        gamma_decay=GAMMA_DECAY,
+        criterion=CRITERION,
+        optimizer=OPTIMIZER
+    )
 
-policy_network, target_network, all_reward_sequences = train(
-    policy_network=policy_net,
-    target_network=target_net,
-    episodes=episodes,
-    time_steps=time_steps,
-    batch_size=BATCH_SIZE,
-    epsilon=EPSILON,
-    epsilon_decay=EPSILON_DECAY,
-    gamma=GAMMA,
-    gamma_decay=GAMMA_DECAY,
-    criterion=CRITERION,
-    optimizer=OPTIMIZER
-)
 
-torch.save(target_network.state_dict(), 'target_state_dict.pth')
-torch.save(target_network, 'target_model.pth')
-torch.save(policy_network.state_dict(), 'policy_state_dict.pth')
-torch.save(policy_network, 'policy_network.pth')
+    def moving_average(data, window_size=10):
+        """Compute the moving average with a given window size."""
+        if len(data) < window_size:
+            return data  # Not enough data points for a moving average
+        return np.convolve(data, np.ones(window_size)/window_size, mode='valid')
+
+
+
+    def save_models():
+        torch.save(target_network.state_dict(), 'target_state_dict.pth')
+        torch.save(target_network, 'target_model.pth')
+        torch.save(policy_network.state_dict(), 'policy_state_dict.pth')
+        torch.save(policy_network, 'policy_network.pth')
+
+    save_models()
+
+    # Plot a scatter plot for each episode's moving average.
+    plt.figure(figsize=(10, 6))
+    for episode_idx, episode_rewards in enumerate(all_reward_sequences[len(all_reward_sequences) - 5:]):
+        # Compute moving average with a window size of 10 (adjust as needed)
+        ma = moving_average(episode_rewards, window_size=10)
+        # Create x values corresponding to the time steps after computing the moving average
+        x_vals = np.arange(len(ma))
+        # Use scatter plot for this episode
+        plt.scatter(x_vals, ma, label=f"Episode {episode_idx+1}", alpha=0.6)
+
+    plt.xlabel("Time Step")
+    plt.ylabel("Moving Average of Cumulative Reward")
+    plt.title("Moving Average Scatter Plot for Each Episode")
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+    plt.savefig("Rewards.png")
