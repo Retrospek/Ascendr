@@ -24,16 +24,21 @@ class JustDoIt(gym.Env):
                 "torso_location": gym.spaces.Box(low=-25, high=25, shape=(2,), dtype=np.float32),
                 "arm_location": gym.spaces.Box(low=-25, high=25, shape=(2,), dtype=np.float32),
                 "holds": gym.spaces.Box(low=-25, high=25, shape=(len(self.holds), 2), dtype=np.float32),
+                "average_distance_delta": gym.spaces.Box(low=-25, high=25, shape=(1,), dtype=np.float32),
                 "target_hold": gym.spaces.Box(low=-25, high=25, shape=(2,), dtype=np.float32),
                 "distance_from_target_TORSO": gym.spaces.Box(low=0, high=np.inf, shape=(1,), dtype=np.float32),
                 "distance_from_target_ARM": gym.spaces.Box(low=0, high=np.inf, shape=(1,), dtype=np.float32)  # We are experimenting with one arm, so we'll edit this later
             }
         )
 
+
+
+
         self.inner_state = {
             "torso_location": self.climbr.torso.location,
             "arm_location": self.climbr.arms[0].location,
             "holds": self.holds,
+            "average_distance_delta": 24.99,
             "target_hold": self.target_hold,
             "distance_from_target_TORSO": np.linalg.norm(self.target_hold - self.climbr.torso.location),
             "distance_from_target_ARM": np.linalg.norm(self.target_hold - self.climbr.arms[0].location)
@@ -49,17 +54,19 @@ class JustDoIt(gym.Env):
         2 = Holding Target
         3 = Not Holding Target
         """
-
+        pass
     def reset(self):
         # Now I need to reset the environment from above
         self.climbr = climbr()
         self.target_hold = self.holds[np.random.randint(0, len(self.holds))]
         self.rewards = []
+        self.energy = 500
 
         self.inner_state = {
             "torso_location": self.climbr.torso.location,
             "arm_location": self.climbr.arms[0].location,
             "holds": self.holds,
+            "average_distance_delta": 24.99,
             "target_hold": self.target_hold,
             "distance_from_target_TORSO": np.linalg.norm(self.target_hold - self.climbr.torso.location),
             "distance_from_target_ARM": np.linalg.norm(self.target_hold - self.climbr.arms[0].location)
@@ -77,38 +84,43 @@ class JustDoIt(gym.Env):
 
             if(arm_location[0] > 25 or arm_location[1] > 25 or arm_location[0] < -25 or arm_location[1] < -25):
                 end = True
+                reward = -10000
+            self.energy += -0.75
         if action == 1:
             self.climbr.arms[0].release()
+            self.energy += -0.75
         if action == 2:
             self.climbr.shift_arm(0, self.angleChange)
+            self.energy += -1
         if action == 3:
             self.climbr.shift_arm(0, -1 * self.angleChange)
+            self.energy -= 1
 
-        if self.climbr.torso.location[0] == self.target_hold[0] and self.climbr.torso.location[1] == self.target_hold[1]:
-            end = True
-            reward += 10000
-
+        #Incorporating a average limb and torso accumalated difference to target
         original_distance_from_target_TORSO = self.inner_state['distance_from_target_TORSO']
         new_distance_from_target_TORSO = np.linalg.norm(self.target_hold - self.climbr.torso.location)
-        if(original_distance_from_target_TORSO > new_distance_from_target_TORSO):
-            reward += 1
+        torso_distance_delta = original_distance_from_target_TORSO - new_distance_from_target_TORSO
 
-        #original_distance_from_target_ARM = self.inner_state['distance_from_target_ARM']
-        #new_distance_from_target_ARM = np.linalg.norm(self.target_hold - self.climbr.arms[0].location)
-        #reward += (original_distance_from_target_ARM - new_distance_from_target_ARM) * 2
 
-        #if(np.linalg.norm(self.target_hold - self.climbr.arms[0].location) <= self.climbr.arms[0].length): # Close to completion reward
-        #   reward += 50
+        original_distance_from_target_ARM = self.inner_state['distance_from_target_ARM']
+        new_distance_from_target_ARM = np.linalg.norm(self.target_hold - self.climbr.arms[0].location)
+        arm_distance_delta = original_distance_from_target_ARM - new_distance_from_target_ARM
 
-        if(self.energy == 0):
+        average_body_delta = (torso_distance_delta + arm_distance_delta) / 2.0
+
+        reward += 5 * np.sign(average_body_delta) # -1 is makes it better for the negative delta because that means closer
+
+        if(np.linalg.norm(self.target_hold - self.climbr.arms[0].location) <= self.climbr.arms[0].length): # Close to completion reward
+           end = True
+           reward += 10000
+
+        if self.energy <= 0:
             end = True
-            reward = -500
-
-        self.energy -= 1 # Incorporate some speed factor
-        reward -= 1
+            reward += -10000
 
         self.inner_state['torso_location'] = self.climbr.torso.location
         self.inner_state['arm_location'] = self.climbr.arms[0].location
+        self.inner_state['average_distance_delta'] = average_body_delta
         self.inner_state['distance_from_target_TORSO'] = np.linalg.norm(self.target_hold - self.climbr.torso.location)
         self.inner_state['distance_from_target_ARM'] = np.linalg.norm(self.target_hold - self.climbr.arms[0].location)
 

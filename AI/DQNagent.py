@@ -11,6 +11,9 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
+from torch.utils.tensorboard import SummaryWriter
+
+writer = SummaryWriter(log_dir='./runs/experiment_1')
 
 from tqdm import tqdm
 import matplotlib.pyplot as plt
@@ -72,6 +75,9 @@ def train(policy_network, target_network,
     replaysampler = ReplayMemory(capacity=1000)
     for episode in range(episodes):
         accumulated_reward = 0
+
+        writer.add_scalar('Reward/Episode', accumulated_reward, episode)
+
         episode_reward = []  # Start an empty list for episode rewards
         
         # Reset the environment and get the initial observation; flatten it.
@@ -145,6 +151,8 @@ def train(policy_network, target_network,
 
         all_reward_sequences.append(episode_reward)
         target_network.load_state_dict(policy_network.state_dict())
+    writer.close()
+
     return policy_network, target_network, all_reward_sequences
 
 
@@ -178,14 +186,14 @@ target_net.load_state_dict(policy_net.state_dict())  # Copy the weights from the
 
 if __name__ == "__main__":
     # 2.) Training Loop
-    episodes = 500
+    episodes = 50
     time_steps = 500
     BATCH_SIZE = 64
-    EPSILON = 0.999
-    EPSILON_DECAY = 0.95
+    EPSILON = 1
+    EPSILON_DECAY = 0.9998
     GAMMA = 0.75
     GAMMA_DECAY = 0.95
-    LR = 0.001
+    LR = 1e-4
     CRITERION = nn.SmoothL1Loss()
     OPTIMIZER = optim.Adam(policy_net.parameters(), lr=LR)
 
