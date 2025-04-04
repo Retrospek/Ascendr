@@ -10,15 +10,14 @@ class JustDoIt(gym.Env):
         target_idx = np.random.randint(0, len(holds))
         self.target_hold = holds[target_idx] # The last possible hold
         self.holds = holds
-        self.energy = energy 
-
 
         self.climbr = climbr() # Let's just use default characteristics
+        self.energy = self.climbr.energy
         self.rewards = []
         #CHANGING THIS \/ in the future
         self.action_space = gym.spaces.Discrete(4) # 0: Hold, 1:Let Go, 2:Shifting(Implicitely this takes care of the 2 states of the arm grabbing or not holding innately)
         # In reality it is 4 actions ^^^^^^, but the other two actions are built into one function
-    
+        # The Observation Space Structure
         self.observation_space = gym.spaces.Dict(
             {
                 "torso_location": gym.spaces.Box(low=-25, high=25, shape=(2,), dtype=np.float32),
@@ -31,9 +30,7 @@ class JustDoIt(gym.Env):
             }
         )
 
-
-
-
+        # The Actual Observation Space
         self.inner_state = {
             "torso_location": self.climbr.torso.location,
             "arm_location": self.climbr.arms[0].location,
@@ -60,7 +57,7 @@ class JustDoIt(gym.Env):
         self.climbr = climbr()
         self.target_hold = self.holds[np.random.randint(0, len(self.holds))]
         self.rewards = []
-        self.energy = 500
+        self.energy = self.climbr.energy
 
         self.inner_state = {
             "torso_location": self.climbr.torso.location,
@@ -85,10 +82,10 @@ class JustDoIt(gym.Env):
             if(arm_location[0] > 25 or arm_location[1] > 25 or arm_location[0] < -25 or arm_location[1] < -25):
                 end = True
                 reward = -1000
-            self.energy += -0.75
+            self.energy += -0.5
         if action == 1:
             self.climbr.arms[0].release()
-            self.energy += -0.75
+            self.energy += 0.5
         if action == 2:
             self.climbr.shift_arm(0, self.angleChange)
             self.energy += -1
@@ -112,12 +109,12 @@ class JustDoIt(gym.Env):
 
         if(np.linalg.norm(self.target_hold - self.climbr.arms[0].location) <= 1.5): # Within Arm Range
            end = True
-           reward += 500
+           reward += 2000
 
         else:
             if self.energy <= 0:
                 end = True
-                reward += -100
+                reward += -500
         
         # Speed Up Reward logic
         reward += -1

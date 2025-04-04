@@ -18,6 +18,8 @@ writer = SummaryWriter(log_dir='./runs/experiment_1')
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 
+import itertools
+
 from V1env import JustDoIt
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -68,8 +70,8 @@ class ReplayMemory(object):
 
 
 def train(policy_network, target_network,
-          episodes, time_steps, batch_size, 
-          epsilon, epsilon_decay, gamma, gamma_decay, criterion, optimizer):
+          episodes, batch_size, 
+          epsilon, epsilon_end, epsilon_decay, gamma, criterion, optimizer):
 
     all_reward_sequences = []  # For graphing down the line
     replaysampler = ReplayMemory(capacity=2500)
@@ -84,7 +86,7 @@ def train(policy_network, target_network,
         start_state, _ = env.reset()
         current_state = flatten(env.observation_space, start_state)  # current_state is a flat numpy array
 
-        for t in range(time_steps):  # Keep running until allocated steps are gone
+        for t in itertools.count():  # Keep running until allocated energy is gone
 
             action_epsilon_chance = np.random.rand()
 
@@ -146,7 +148,11 @@ def train(policy_network, target_network,
             if end:
                 break
 
-        epsilon *= epsilon_decay
+        epsilon = epsilon_end + (epsilon - epsilon_end) * math.exp(-1. * t / epsilon_decay)
+        """
+        EPS_END + (EPS_START - EPS_END) * \
+        math.exp(-1. * steps_done / EPS_DECAY)
+        """
         #gamma *= gamma_decay  Note: Typically gamma remains fixed; adjust as needed.
 
         all_reward_sequences.append(episode_reward)
@@ -155,6 +161,11 @@ def train(policy_network, target_network,
 
     return policy_network, target_network, all_reward_sequences
 
+def moving_average(data, window_size=10):
+        """Compute the moving average with a given window size."""
+        if len(data) < window_size:
+            return data  # Not enough data points for a moving average
+        return np.convolve(data, np.ones(window_size)/window_size, mode='valid')
 
 """ 
 Quick Review
@@ -186,13 +197,12 @@ target_net.load_state_dict(policy_net.state_dict())  # Copy the weights from the
 
 if __name__ == "__main__":
     # 2.) Training Loop
-    episodes = 1000
-    time_steps = 1000
-    BATCH_SIZE = 32
-    EPSILON = 0.9999
-    EPSILON_DECAY = 0.99998
+    episodes = 750
+    BATCH_SIZE = 32 
     GAMMA = 0.25
-    GAMMA_DECAY = 0.95
+    EPSILON_START = 0.9
+    EPSILON_END = 0.01
+    EPSILON_DECAY = 1000
     LR = 1e-3
     CRITERION = nn.SmoothL1Loss()
     OPTIMIZER = optim.AdamW(policy_net.parameters(), lr=LR, amsgrad=True)
@@ -201,24 +211,14 @@ if __name__ == "__main__":
         policy_network=policy_net,
         target_network=target_net,
         episodes=episodes,
-        time_steps=time_steps,
         batch_size=BATCH_SIZE,
-        epsilon=EPSILON,
+        epsilon=EPSILON_START,
+        epsilon_end = EPSILON_END,
         epsilon_decay=EPSILON_DECAY,
         gamma=GAMMA,
-        gamma_decay=GAMMA_DECAY,
         criterion=CRITERION,
         optimizer=OPTIMIZER
     )
-
-
-    def moving_average(data, window_size=10):
-        """Compute the moving average with a given window size."""
-        if len(data) < window_size:
-            return data  # Not enough data points for a moving average
-        return np.convolve(data, np.ones(window_size)/window_size, mode='valid')
-
-
 
     def save_models():
         torch.save(target_network.state_dict(), 'target_state_dict.pth')
@@ -228,20 +228,22 @@ if __name__ == "__main__":
 
     save_models()
 
-    # Plot a scatter plot for each episode's moving average.
-    plt.figure(figsize=(10, 6))
-    for episode_idx, episode_rewards in enumerate(all_reward_sequences[len(all_reward_sequences) - 5:]):
-        # Compute moving average with a window size of 10 (adjust as needed)
-        ma = moving_average(episode_rewards, window_size=10)
-        # Create x values corresponding to the time steps after computing the moving average
-        x_vals = np.arange(len(ma))
-        # Use scatter plot for this episode
-        plt.scatter(x_vals, ma, label=f"Episode {episode_idx+1}", alpha=0.6)
+    plt.figure(figsize=(12, 8))
+    # Use a colormap to generate distinct colors for each episode
+    num_episodes = 40
+    colors = plt.cm.viridis(np.linspace(0, 1, num_episodes))
 
-    plt.xlabel("Time Step")
-    plt.ylabel("Moving Average of Cumulative Reward")
-    plt.title("Moving Average Scatter Plot for Each Episode")
-    plt.legend()
-    plt.grid(True)
+    # Plot the moving average for the last 40 episodes using line graphs
+    for episode_idx, episode_rewards in enumerate(all_reward_sequences[-num_episodes:]):
+        ma = moving_average(episode_rewards, window_size=10)
+        x_vals = np.arange(len(ma))
+        plt.plot(x_vals, ma, label=f"Episode {episode_idx+1}", color=colors[episode_idx], linewidth=2)
+
+    plt.xlabel("Time Step", fontsize=14)
+    plt.ylabel("Moving Average of Cumulative Reward", fontsize=14)
+    plt.title("Moving Average Line Plot for Each Episode", fontsize=16)
+    plt.legend(loc="upper left", fontsize=10, ncol=2)
+    plt.grid(True, which="both", linestyle="--", linewidth=0.5)
+    plt.tight_layout()  # Adjust layout to prevent clipping of labels
+    plt.savefig("Rewards.png", dpi=300)
     plt.show()
-    plt.savefig("Rewards.png")

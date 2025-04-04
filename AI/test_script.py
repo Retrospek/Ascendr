@@ -10,7 +10,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 if __name__ == "__main__":
     # Load your trained model state (adjust the path as needed)
     target = DQN(state_dim=209, action_dim=4)  # Make sure to use proper state_dim and action_dim if required.
-    target.load_state_dict(torch.load('target_state_dict.pth', map_location=device))
+    target.load_state_dict(torch.load('policy_state_dict.pth', map_location=device))
     target.to(device)
     target.eval()
 

@@ -24,10 +24,10 @@ class torso():
         self.location = location
 
 class climbr:
-    def __init__(self, start_loc = np.asarray((0, 0)), arm_lengths = np.array([2]), arm_degrees = np.array([10])):
+    def __init__(self, start_loc = np.asarray((0, 0)), arm_lengths = np.array([2]), arm_degrees = np.array([10]), energy=500):
         self.torso = torso(location = start_loc)
         self.arms = [arm(length=arm_lengths[i], angle=arm_degrees[i]) for i in range(len(arm_lengths))] # 0 = Right and 1 = Left <= Indices
-
+        self.energy = energy
     def grab(self, side, holds):
         self.arms[side].grab(holds)
 
