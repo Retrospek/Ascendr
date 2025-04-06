@@ -97,8 +97,8 @@ class JustDoIt(gym.Env):
         #Incorporating a average limb and torso accumalated difference to target
         original_distance_from_target_TORSO = self.inner_state['distance_from_target_TORSO']
         new_distance_from_target_TORSO = np.linalg.norm(self.target_hold - self.climbr.torso.location)
-        print(f"TH: {self.target_hold}")
-        print(f"STL: {self.climbr.torso.location}")
+        #print(f"TH: {self.target_hold}")
+        #print(f"STL: {self.climbr.torso.location}")
         torso_distance_delta = original_distance_from_target_TORSO - new_distance_from_target_TORSO
 
 
@@ -115,10 +115,10 @@ class JustDoIt(gym.Env):
             arm_loc_tuple = tuple(self.climbr.arms[0].location)
             if(self.climbr.arms[0].grabbing and torso_loc_tuple in self.past_distance_deltas_torso):
                 reward += -20
-                print("HERE")
+                #print("HERE")
             elif(not self.climbr.arms[0].grabbing and arm_loc_tuple in self.past_distance_deltas_armR):
                 reward += -20
-                print("HERE")
+                #print("HERE")
         self.past_distance_deltas_torso.add(tuple(self.climbr.torso.location))
         self.past_distance_deltas_armR.add(tuple(self.climbr.arms[0].location))
 
@@ -147,7 +147,7 @@ class JustDoIt(gym.Env):
         self.inner_state['distance_from_target_ARM'] = np.linalg.norm(self.target_hold - self.climbr.arms[0].location)
 
         self.rewards.append(reward) #For Future Analysis
-        
+        print(action)
         print(reward)
 
 
