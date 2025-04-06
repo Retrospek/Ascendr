@@ -32,9 +32,9 @@ class DQN(nn.Module):
 
         # self.conv1 = nn.Conv2d()
 
-        self.fc1 = nn.Linear(state_dim, 64)
-        self.fc2 = nn.Linear(64, 32)
-        self.fc3 = nn.Linear(32, action_dim)
+        self.fc1 = nn.Linear(state_dim, 256)
+        self.fc2 = nn.Linear(256, 64)
+        self.fc3 = nn.Linear(64, action_dim)
 
         self.relu = nn.ReLU()
 
@@ -86,7 +86,7 @@ def train(policy_network, target_network,
         start_state, _ = env.reset()
         current_state = flatten(env.observation_space, start_state)  # current_state is a flat numpy array
 
-        for t in itertools.count():  # Keep running until allocated energy is gone
+        for t in range(500):  # Keep running until allocated energy is gone
 
             action_epsilon_chance = np.random.rand()
 
@@ -197,11 +197,11 @@ target_net.load_state_dict(policy_net.state_dict())  # Copy the weights from the
 
 if __name__ == "__main__":
     # 2.) Training Loop
-    episodes = 750
+    episodes = 100
     BATCH_SIZE = 32 
     GAMMA = 0.25
     EPSILON_START = 0.9
-    EPSILON_END = 0.01
+    EPSILON_END = 0.05
     EPSILON_DECAY = 1000
     LR = 1e-3
     CRITERION = nn.SmoothL1Loss()

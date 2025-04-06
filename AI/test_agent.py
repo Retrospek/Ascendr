@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
+import random
 from gymnasium.spaces.utils import flatten
 from V1env import JustDoIt 
 from DQNagent import DQN  # Ensure this imports your network definition
@@ -9,7 +10,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 if __name__ == "__main__":
     # Load your trained model state (adjust the path as needed)
-    target = DQN(state_dim=209, action_dim=4)  # Make sure to use proper state_dim and action_dim if required.
+    target = DQN(state_dim=209, action_dim=4)  # Use proper state_dim and action_dim if required.
     target.load_state_dict(torch.load('policy_state_dict.pth', map_location=device))
     target.to(device)
     target.eval()
@@ -25,12 +26,22 @@ if __name__ == "__main__":
     rewards = []
     done = False
 
+    # Set the epsilon for epsilon-greedy exploration
+    epsilon = 0.1  # Adjust epsilon as needed
+
     for _ in range(200):
         with torch.no_grad():
-            # Pass the tensor state to the network
-            q_values = target(state_tensor)
-            action = int(torch.argmax(q_values).item())
-            print("Q-values:", q_values.cpu().numpy(), "Chosen action:", action)
+            # Epsilon-greedy action selection
+            if random.random() < epsilon:
+                # Take a random action
+                action = random.randint(0, 3)
+                print("Random action chosen:", action)
+            else:
+                # Use the network's greedy action
+                q_values = target(state_tensor)
+                action = int(torch.argmax(q_values).item())
+                print("Q-values:", q_values.cpu().numpy(), "Chosen greedy action:", action)
+
         # Take a step in the environment
         obs, reward, done, info, _ = env.step(action)
         accum_reward += reward

@@ -38,6 +38,8 @@ class climbr:
         theta = np.radians(angle)
         if(self.arms[side].grabbing == False):
             self.arms[side].angle += theta
+            arm_angle = self.arms[side].angle
+            self.arms[side].location = np.array([self.torso.location[0] + self.arms[side].length * np.cos(arm_angle), self.torso.location[1] + self.arms[side].length * np.sin(arm_angle)])
         else: # If we are in fact grabbing we want to make 
             theta *= -1
             # Now we need to shift every point around the limb that's rotating itself kind of when grabbing

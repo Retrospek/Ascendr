@@ -14,6 +14,9 @@ class JustDoIt(gym.Env):
         self.climbr = climbr() # Let's just use default characteristics
         self.energy = self.climbr.energy
         self.rewards = []
+
+        self.past_distance_deltas_torso = set()
+        self.past_distance_deltas_armR = set()
         #CHANGING THIS \/ in the future
         self.action_space = gym.spaces.Discrete(4) # 0: Hold, 1:Let Go, 2:Shifting(Implicitely this takes care of the 2 states of the arm grabbing or not holding innately)
         # In reality it is 4 actions ^^^^^^, but the other two actions are built into one function
@@ -55,7 +58,7 @@ class JustDoIt(gym.Env):
     def reset(self):
         # Now I need to reset the environment from above
         self.climbr = climbr()
-        self.target_hold = self.holds[np.random.randint(0, len(self.holds))]
+        self.target_hold = self.holds[-1]
         self.rewards = []
         self.energy = self.climbr.energy
 
@@ -82,20 +85,20 @@ class JustDoIt(gym.Env):
             if(arm_location[0] > 25 or arm_location[1] > 25 or arm_location[0] < -25 or arm_location[1] < -25):
                 end = True
                 reward = -1000
-            self.energy += -0.5
         if action == 1:
             self.climbr.arms[0].release()
-            self.energy += 0.5
         if action == 2:
             self.climbr.shift_arm(0, self.angleChange)
-            self.energy += -1
         if action == 3:
             self.climbr.shift_arm(0, -1 * self.angleChange)
-            self.energy -= 1
+
+        self.energy += -1
 
         #Incorporating a average limb and torso accumalated difference to target
         original_distance_from_target_TORSO = self.inner_state['distance_from_target_TORSO']
         new_distance_from_target_TORSO = np.linalg.norm(self.target_hold - self.climbr.torso.location)
+        print(f"TH: {self.target_hold}")
+        print(f"STL: {self.climbr.torso.location}")
         torso_distance_delta = original_distance_from_target_TORSO - new_distance_from_target_TORSO
 
 
@@ -105,8 +108,25 @@ class JustDoIt(gym.Env):
 
         average_body_delta = (torso_distance_delta + arm_distance_delta) / 2.0
 
-        reward += np.sign(average_body_delta) * np.sqrt(torso_distance_delta**2 + arm_distance_delta**2) # -1 is makes it better for the negative delta because that means closer
+        # Discourages to be the same distance away 
+        # Implement some check backwards 18 elements because at most it should be rotating 180 degrees an arm
+        if(action != 0 and action !=1):
+            torso_loc_tuple = tuple(self.climbr.torso.location)
+            arm_loc_tuple = tuple(self.climbr.arms[0].location)
+            if(self.climbr.arms[0].grabbing and torso_loc_tuple in self.past_distance_deltas_torso):
+                reward += -20
+                print("HERE")
+            elif(not self.climbr.arms[0].grabbing and arm_loc_tuple in self.past_distance_deltas_armR):
+                reward += -20
+                print("HERE")
+        self.past_distance_deltas_torso.add(tuple(self.climbr.torso.location))
+        self.past_distance_deltas_armR.add(tuple(self.climbr.arms[0].location))
 
+
+        reward += 20 * np.sign(average_body_delta) * np.sqrt(torso_distance_delta**2 + arm_distance_delta**2) # -1 is makes it better for the negative delta because that means closer
+        print(f"ABD: {average_body_delta}")
+        print(f"TD: {torso_distance_delta}")
+        print(f"AD: {arm_distance_delta}")
         if(np.linalg.norm(self.target_hold - self.climbr.arms[0].location) <= 1.5): # Within Arm Range
            end = True
            reward += 2000
@@ -127,6 +147,9 @@ class JustDoIt(gym.Env):
         self.inner_state['distance_from_target_ARM'] = np.linalg.norm(self.target_hold - self.climbr.arms[0].location)
 
         self.rewards.append(reward) #For Future Analysis
+        
+        print(reward)
+
 
         return self.inner_state, reward, end, {}, {}
 
