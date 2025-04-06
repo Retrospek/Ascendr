@@ -10,7 +10,7 @@ Ascendr is a climbing simulation environment built on top of [Gymnasium](https:/
   - `1`: Release hold
   - `2`: Shift arm (e.g., move left)
   - `3`: Shift arm (e.g., move right)
-- **Observation Space**: 
+- **Observation Space**:
   - Climber’s torso and arm positions
   - Available holds on the wall
   - Target hold details
@@ -30,3 +30,4 @@ Ascendr is a climbing simulation environment built on top of [Gymnasium](https:/
    ```bash
    git clone https://github.com/yourusername/ascendr.git
    cd ascendr
+   ```

@@ -23,6 +23,7 @@ class JustDoIt(gym.Env):
         # The Observation Space Structure
         self.observation_space = gym.spaces.Dict(
             {
+                "environment_image": gym.spaces.Box(low=0, high = 4, shape=(gridDim, gridDim), dtype=np.int32),
                 "torso_location": gym.spaces.Box(low=-25, high=25, shape=(2,), dtype=np.float32),
                 "arm_location": gym.spaces.Box(low=-25, high=25, shape=(2,), dtype=np.float32),
                 "holds": gym.spaces.Box(low=-25, high=25, shape=(len(self.holds), 2), dtype=np.float32),
@@ -34,7 +35,19 @@ class JustDoIt(gym.Env):
         )
 
         # The Actual Observation Space
+
+        environment_picture = np.zeros(shape=(gridDim,gridDim))
+        environment_picture[self.target_hold[0]][self.target_hold[1]] = 1
+        for hold in self.holds:
+            environment_picture[hold[0]][hold[1]] = 2
+        for arm in self.climbr.arms:
+            environment_picture[math.floor(arm.location[0]).astype(int)][math.floor(arm.location[1]).astype(int)] = 3
+        environment_picture[math.floor(self.climbr.torso.location[0]).astype(int)][math.floor(self.climbr.torso.location[1]).astype(int)] = 4
+
+        self.environment_picture = environment_picture
+
         self.inner_state = {
+            "environment_image": self.environment_picture,
             "torso_location": self.climbr.torso.location,
             "arm_location": self.climbr.arms[0].location,
             "holds": self.holds,
@@ -61,8 +74,19 @@ class JustDoIt(gym.Env):
         self.target_hold = self.holds[-1]
         self.rewards = []
         self.energy = self.climbr.energy
+        
+        environment_picture = np.zeros(shape=(self.gridDim,self.gridDim))
+        environment_picture[self.target_hold[0]][self.target_hold[1]] = 1
+        for hold in self.holds:
+            environment_picture[hold[0]][hold[1]] = 2
+        for arm in self.climbr.arms:
+            environment_picture[math.floor(arm.location[0]).astype(int)][math.floor(arm.location[1]).astype(int)] = 3
+        environment_picture[math.floor(self.climbr.torso.location[0]).astype(int)][math.floor(self.climbr.torso.location[1]).astype(int)] = 4
+        
+        self.environment_picture = environment_picture
 
         self.inner_state = {
+            "environment_image": self.environment_picture,
             "torso_location": self.climbr.torso.location,
             "arm_location": self.climbr.arms[0].location,
             "holds": self.holds,
@@ -139,7 +163,11 @@ class JustDoIt(gym.Env):
         # Speed Up Reward logic
         reward += -1
 
+        for arm in self.climbr.arms:
+            self.environment_picture[math.floor(arm.location[0]).astype(int)][math.floor(arm.location[1]).astype(int)] = 3
+        self.environment_picture[math.floor(self.climbr.torso.location[0]).astype(int)][math.floor(self.climbr.torso.location[1]).astype(int)] = 4
 
+        self.inner_state['environment_image'] = self.environment_picture
         self.inner_state['torso_location'] = self.climbr.torso.location
         self.inner_state['arm_location'] = self.climbr.arms[0].location
         self.inner_state['average_distance_delta'] = average_body_delta

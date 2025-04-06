@@ -27,10 +27,10 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # This is basically just a function approximater that takes the form V(s, w), where the weights are learned in the DQN.
 # We are using a Q-Learning (deep) because off of my current intuition there's no sense of risk as of yet when it comes to certain actions taken place.
 class DQN(nn.Module):
-    def __init__(self, state_dim, action_dim):
+    def __init__(self, state_dim, action_dim, gridDim):
         super(DQN, self).__init__()
 
-        # self.conv1 = nn.Conv2d()
+        self.conv1 = nn.Conv2d(gridDim) # Fix this later
 
         self.fc1 = nn.Linear(state_dim, 256)
         self.fc2 = nn.Linear(256, 64)
