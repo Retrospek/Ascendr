@@ -8,9 +8,8 @@ from V1env import JustDoIt
 if __name__ == "__main__":
     env = JustDoIt()
 
-    # Reset the environment and process the initial observation.
     obs, _ = env.reset()
-    state = flatten(env.observation_space, obs)  # Flatten the observation
+    state = flatten(env.observation_space, obs)  
     accum_reward = 0
     rewards = []
     done = False
@@ -18,9 +17,8 @@ if __name__ == "__main__":
     for _ in range(200):
         env.render()  # Render the environment
         print("Current cumulative reward:", accum_reward)
-
-        # Human input for action
         valid_input = False
+
         while not valid_input:
             try:
                 action = int(input("Enter your action (0, 1, 2, or 3): "))
@@ -31,12 +29,11 @@ if __name__ == "__main__":
             except ValueError:
                 print("Invalid input. Please enter a valid integer.")
 
-        # Take a step in the environment using the human-chosen action.
         obs, reward, done, info, _ = env.step(action)
+        print(f"Image Observation: {obs["environment_image"]}")
         accum_reward += reward
         rewards.append(accum_reward)
 
-        # Prepare the next state (if needed)
         state = flatten(env.observation_space, obs)
 
         if done:

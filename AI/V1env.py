@@ -26,6 +26,7 @@ class JustDoIt(gym.Env):
                 "environment_image": gym.spaces.Box(low=0, high = 4, shape=(gridDim, gridDim), dtype=np.int32),
                 "torso_location": gym.spaces.Box(low=-25, high=25, shape=(2,), dtype=np.float32),
                 "arm_location": gym.spaces.Box(low=-25, high=25, shape=(2,), dtype=np.float32),
+                "arm_grabbing_status": gym.spaces.MultiBinary(len(self.climbr.arms)),
                 "holds": gym.spaces.Box(low=-25, high=25, shape=(len(self.holds), 2), dtype=np.float32),
                 "average_distance_delta": gym.spaces.Box(low=-25, high=25, shape=(1,), dtype=np.float32),
                 "target_hold": gym.spaces.Box(low=-25, high=25, shape=(2,), dtype=np.float32),
@@ -37,12 +38,14 @@ class JustDoIt(gym.Env):
         # The Actual Observation Space
 
         environment_picture = np.zeros(shape=(gridDim,gridDim))
-        environment_picture[self.target_hold[0]][self.target_hold[1]] = 1
+        print(self.target_hold[0])
+        print(self.target_hold[1])
+        environment_picture[math.floor(self.target_hold[0])][math.floor(self.target_hold[1])] = 1
         for hold in self.holds:
-            environment_picture[hold[0]][hold[1]] = 2
+            environment_picture[math.floor(hold[0])][math.floor(hold[1])] = 2
         for arm in self.climbr.arms:
-            environment_picture[math.floor(arm.location[0]).astype(int)][math.floor(arm.location[1]).astype(int)] = 3
-        environment_picture[math.floor(self.climbr.torso.location[0]).astype(int)][math.floor(self.climbr.torso.location[1]).astype(int)] = 4
+            environment_picture[math.floor(arm.location[0])][math.floor(arm.location[1])] = 3
+        environment_picture[math.floor(self.climbr.torso.location[0])][math.floor(self.climbr.torso.location[1])] = 4
 
         self.environment_picture = environment_picture
 
@@ -50,6 +53,7 @@ class JustDoIt(gym.Env):
             "environment_image": self.environment_picture,
             "torso_location": self.climbr.torso.location,
             "arm_location": self.climbr.arms[0].location,
+            "arm_grabbing_status": np.array([self.climbr.arms[i].grabbing for i in range(len(self.climbr.arms))], dtype=np.int8),
             "holds": self.holds,
             "average_distance_delta": 24.99,
             "target_hold": self.target_hold,
@@ -76,12 +80,12 @@ class JustDoIt(gym.Env):
         self.energy = self.climbr.energy
         
         environment_picture = np.zeros(shape=(self.gridDim,self.gridDim))
-        environment_picture[self.target_hold[0]][self.target_hold[1]] = 1
+        environment_picture[math.floor(self.target_hold[0])][math.floor(self.target_hold[1])] = 1
         for hold in self.holds:
-            environment_picture[hold[0]][hold[1]] = 2
+            environment_picture[math.floor(hold[0])][math.floor(hold[1])] = 2
         for arm in self.climbr.arms:
-            environment_picture[math.floor(arm.location[0]).astype(int)][math.floor(arm.location[1]).astype(int)] = 3
-        environment_picture[math.floor(self.climbr.torso.location[0]).astype(int)][math.floor(self.climbr.torso.location[1]).astype(int)] = 4
+            environment_picture[math.floor(arm.location[0])][math.floor(arm.location[1])] = 3
+        environment_picture[math.floor(self.climbr.torso.location[0])][math.floor(self.climbr.torso.location[1])] = 4
         
         self.environment_picture = environment_picture
 
@@ -89,6 +93,7 @@ class JustDoIt(gym.Env):
             "environment_image": self.environment_picture,
             "torso_location": self.climbr.torso.location,
             "arm_location": self.climbr.arms[0].location,
+            "arm_grabbing_status": np.array([self.climbr.arms[i].grabbing for i in range(len(self.climbr.arms))], dtype=np.int8),
             "holds": self.holds,
             "average_distance_delta": 24.99,
             "target_hold": self.target_hold,
@@ -148,9 +153,9 @@ class JustDoIt(gym.Env):
 
 
         reward += 20 * np.sign(average_body_delta) * np.sqrt(torso_distance_delta**2 + arm_distance_delta**2) # -1 is makes it better for the negative delta because that means closer
-        print(f"ABD: {average_body_delta}")
-        print(f"TD: {torso_distance_delta}")
-        print(f"AD: {arm_distance_delta}")
+        #print(f"ABD: {average_body_delta}")
+        #print(f"TD: {torso_distance_delta}")
+        #print(f"AD: {arm_distance_delta}")
         if(np.linalg.norm(self.target_hold - self.climbr.arms[0].location) <= 1.5): # Within Arm Range
            end = True
            reward += 2000
@@ -164,19 +169,20 @@ class JustDoIt(gym.Env):
         reward += -1
 
         for arm in self.climbr.arms:
-            self.environment_picture[math.floor(arm.location[0]).astype(int)][math.floor(arm.location[1]).astype(int)] = 3
-        self.environment_picture[math.floor(self.climbr.torso.location[0]).astype(int)][math.floor(self.climbr.torso.location[1]).astype(int)] = 4
+            self.environment_picture[math.floor(arm.location[0])][math.floor(arm.location[1])] = 3
+        self.environment_picture[math.floor(self.climbr.torso.location[0])][math.floor(self.climbr.torso.location[1])] = 4
 
         self.inner_state['environment_image'] = self.environment_picture
         self.inner_state['torso_location'] = self.climbr.torso.location
         self.inner_state['arm_location'] = self.climbr.arms[0].location
+        self.inner_state["arm_grabbing_status"] = np.array([self.climbr.arms[i].grabbing for i in range(len(self.climbr.arms))], dtype=np.int8),
         self.inner_state['average_distance_delta'] = average_body_delta
         self.inner_state['distance_from_target_TORSO'] = np.linalg.norm(self.target_hold - self.climbr.torso.location)
         self.inner_state['distance_from_target_ARM'] = np.linalg.norm(self.target_hold - self.climbr.arms[0].location)
 
         self.rewards.append(reward) #For Future Analysis
-        print(action)
-        print(reward)
+        print((action, reward), end=":::")
+
 
 
         return self.inner_state, reward, end, {}, {}

@@ -2,61 +2,66 @@ import numpy as np
 import matplotlib.pyplot as plt
 import torch
 import random
+from gymnasium.spaces import flatten_space
 from gymnasium.spaces.utils import flatten
 from V1env import JustDoIt 
-from DQNagent import DQN  # Ensure this imports your network definition
+from DQNagent import DQN  # Import your network definition
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 if __name__ == "__main__":
-    # Load your trained model state (adjust the path as needed)
-    target = DQN(state_dim=209, action_dim=4)  # Use proper state_dim and action_dim if required.
+    env = JustDoIt()
+    
+    flattened_obs_space = flatten_space(env.observation_space)
+    state_dim = flattened_obs_space.shape[0]
+    action_dim = env.action_space.n  
+
+    # Create your network using the computed state dimension.
+    # Note: gridDim is set to 50 as per your environment.
+    target = DQN(state_dim=state_dim, action_dim=action_dim, gridDim=50)
+    
     target.load_state_dict(torch.load('policy_state_dict.pth', map_location=device))
     target.to(device)
     target.eval()
 
-    env = JustDoIt()
-
-    # Reset the environment and process the initial observation.
     obs, _ = env.reset()
     state = flatten(env.observation_space, obs)  # Flatten the observation
-    state_tensor = torch.tensor(state, dtype=torch.float32, device=device)
+    # Add a batch dimension so that our network receives input of shape [1, state_dim]
+    state_tensor = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
     
     accum_reward = 0
     rewards = []
     done = False
 
-    # Set the epsilon for epsilon-greedy exploration
-    epsilon = 0.1  # Adjust epsilon as needed
+    epsilon = 0.1  # Adjust as needed
 
-    for _ in range(200):
+    for step in range(200):
         with torch.no_grad():
-            # Epsilon-greedy action selection
             if random.random() < epsilon:
-                # Take a random action
-                action = random.randint(0, 3)
+                action = random.randint(0, action_dim - 1)
                 print("Random action chosen:", action)
             else:
-                # Use the network's greedy action
                 q_values = target(state_tensor)
                 action = int(torch.argmax(q_values).item())
                 print("Q-values:", q_values.cpu().numpy(), "Chosen greedy action:", action)
 
-        # Take a step in the environment
+        # Step in the environment.
+        # Note: your environment's step returns (obs, reward, done, info, _)
         obs, reward, done, info, _ = env.step(action)
         accum_reward += reward
         rewards.append(accum_reward)
 
-        env.render()  # Render the environment
+        # Render the environment state.
+        env.render()
 
-        # Prepare the next state
         state = flatten(env.observation_space, obs)
-        state_tensor = torch.tensor(state, dtype=torch.float32, device=device)
+        state_tensor = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
 
         if done:
             print("Episode finished with reward:", accum_reward)
             break
 
+    # Plot the cumulative reward over time.
     plt.ioff()  
     plt.figure()
     plt.plot(rewards, marker='o')

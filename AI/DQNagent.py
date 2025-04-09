@@ -27,25 +27,54 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # This is basically just a function approximater that takes the form V(s, w), where the weights are learned in the DQN.
 # We are using a Q-Learning (deep) because off of my current intuition there's no sense of risk as of yet when it comes to certain actions taken place.
 class DQN(nn.Module):
+    
     def __init__(self, state_dim, action_dim, gridDim):
+        # DQN Model
+        # -------------------------------------------
+        # Args:
+        # - state_dim (int): Dimension of flattened state space
+        # - action_dim (int): Number of discrete actions
+        # - gridDim (int): Width/height of square image grid (e.g., 50)
+        # -------------------------------------------
         super(DQN, self).__init__()
 
-        self.conv1 = nn.Conv2d(gridDim) # Fix this later
+        self.gridDim = gridDim
 
-        self.fc1 = nn.Linear(state_dim, 256)
+        self.conv1 = nn.Conv2d(1, 16, kernel_size=5)
+        self.conv2 = nn.Conv2d(16, 32, kernel_size=3)
+        self.pool = nn.MaxPool2d(2)
+
+        self.convfc1 = nn.Linear(32 * 10 * 10, 128)
+        self.convfc2 = nn.Linear(128, 64)
+        self.convfc3_solo = nn.Linear(64, action_dim)
+
+        self.fc1 = nn.Linear(state_dim - gridDim ** 2, 256)
         self.fc2 = nn.Linear(256, 64)
-        self.fc3 = nn.Linear(64, action_dim)
+        self.fc3_solo = nn.Linear(64, action_dim)
+
+        self.combined_pred = nn.Linear(128, action_dim)
 
         self.relu = nn.ReLU()
 
-    def forward(self, x):
-        out = self.fc1(x)
-        out = self.relu(out)
-        out = self.fc2(out)
-        out = self.relu(out)
-        out = self.fc3(out)
-         # This part is actually pretty weird, but the policy is what generates the Q-values for every possible action and then we sample using softmax
-        return out
+    def forward(self, input):
+        batch_size = input.size(0)
+
+        image = input[:, :self.gridDim * self.gridDim].view(batch_size, 1, self.gridDim, self.gridDim)
+        dense = input[:, self.gridDim * self.gridDim:]
+
+        lin = self.relu(self.fc1(dense))
+        lin = self.relu(self.fc2(lin))
+
+        conv = self.pool(self.relu(self.conv1(image)))
+        conv = self.pool(self.relu(self.conv2(conv)))
+        conv = torch.flatten(conv, start_dim=1)
+        conv = self.relu(self.convfc1(conv))
+        conv = self.relu(self.convfc2(conv))
+
+        combined_output = torch.cat((conv, lin), dim=1)
+        output = self.combined_pred(combined_output)
+        return output
+
 
 """
 We will implement the ReplayMemory class ->:
@@ -71,10 +100,11 @@ class ReplayMemory(object):
 
 def train(policy_network, target_network,
           episodes, batch_size, 
-          epsilon, epsilon_end, epsilon_decay, gamma, criterion, optimizer):
+          epsilon, epsilon_end, epsilon_decay, gamma, criterion, optimizer,
+          gridDim):
 
     all_reward_sequences = []  # For graphing down the line
-    replaysampler = ReplayMemory(capacity=2500)
+    replaysampler = ReplayMemory(capacity=25000)
     for episode in range(episodes):
         accumulated_reward = 0
 
@@ -86,7 +116,7 @@ def train(policy_network, target_network,
         start_state, _ = env.reset()
         current_state = flatten(env.observation_space, start_state)  # current_state is a flat numpy array
 
-        for t in range(500):  # Keep running until allocated energy is gone
+        for t in range(1000):  # Keep running until allocated energy is gone
 
             action_epsilon_chance = np.random.rand()
 
@@ -101,7 +131,7 @@ def train(policy_network, target_network,
             else:
                 # Exploitation branch: choose action with the policy network
                 with torch.no_grad():
-                    current_state_tensor = torch.tensor(current_state, dtype=torch.float32, device=device)
+                    current_state_tensor = torch.tensor(current_state, dtype=torch.float32, device=device).unsqueeze(0)
                     model_q_values = policy_network(current_state_tensor)
                     # Convert the tensor result to an integer action
                     action = int(torch.argmax(model_q_values).item())
@@ -111,33 +141,33 @@ def train(policy_network, target_network,
                 replaysampler.push(*transition)
 
             # If we have enough samples, perform a training step.
-            if(t % 5 == 0):
-                if len(replaysampler) >= batch_size:
-                    sampled_batch_experiences = replaysampler.sample(batch_size)
-                    # Unpack the transitions into batches.
-                    batch_states, batch_actions, batch_rewards, batch_next_states, batch_dones = zip(*sampled_batch_experiences)
-                    
-                    batch_states_tensor = torch.tensor(batch_states, dtype=torch.float32, device=device)
-                    batch_actions_tensor = torch.tensor(batch_actions, dtype=torch.long, device=device)
-                    batch_rewards_tensor = torch.tensor(batch_rewards, dtype=torch.float32, device=device)
-                    batch_next_states_tensor = torch.tensor(batch_next_states, dtype=torch.float32, device=device)
-                    batch_dones_tensor = torch.tensor(batch_dones, dtype=torch.float32, device=device)
-                    
-                    # Compute Q-values for current states and gather the Q-values for the actions taken.
-                    q_values = policy_network(batch_states_tensor)
-                    q_values = q_values.gather(1, batch_actions_tensor.unsqueeze(1)).squeeze(1)
-                    
-                    # Compute target Q-values using the target network.
-                    with torch.no_grad():
-                        next_q_values = target_network(batch_next_states_tensor)
-                        max_next_q_values = next_q_values.max(1)[0]
-                        target_q_values = batch_rewards_tensor + gamma * max_next_q_values * (1 - batch_dones_tensor)
-                    
-                    loss = criterion(q_values, target_q_values)
-                    
-                    optimizer.zero_grad()
-                    loss.backward()
-                    optimizer.step()
+            #if(t % 5 == 0):
+            if len(replaysampler) >= batch_size:
+                sampled_batch_experiences = replaysampler.sample(batch_size)
+                # Unpack the transitions into batches.
+                batch_states, batch_actions, batch_rewards, batch_next_states, batch_dones = zip(*sampled_batch_experiences)
+                
+                batch_states_tensor = torch.tensor(np.stack(batch_states), dtype=torch.float32, device=device)
+                batch_actions_tensor = torch.tensor(np.stack(batch_actions), dtype=torch.long, device=device)
+                batch_rewards_tensor = torch.tensor(np.stack(batch_rewards), dtype=torch.float32, device=device)
+                batch_next_states_tensor = torch.tensor(np.stack(batch_next_states), dtype=torch.float32, device=device)
+                batch_dones_tensor = torch.tensor(np.stack(batch_dones), dtype=torch.float32, device=device)
+                
+                # Compute Q-values for current states and gather the Q-values for the actions taken.
+                q_values = policy_network(batch_states_tensor)
+                q_values = q_values.gather(1, batch_actions_tensor.unsqueeze(1)).squeeze(1)
+                
+                # Compute target Q-values using the target network.
+                with torch.no_grad():
+                    next_q_values = target_network(batch_next_states_tensor)
+                    max_next_q_values = next_q_values.max(1)[0]
+                    target_q_values = batch_rewards_tensor + gamma * max_next_q_values * (1 - batch_dones_tensor)
+                
+                loss = criterion(q_values, target_q_values)
+                
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
 
             accumulated_reward += reward
             episode_reward.append(accumulated_reward)
@@ -191,18 +221,21 @@ action_dim = 4
 flattened_obs_space = flatten_space(env.observation_space)
 state_dim = flattened_obs_space.shape[0]
 
-policy_net = DQN(state_dim=state_dim, action_dim=action_dim).to(device)
-target_net = DQN(state_dim=state_dim, action_dim=action_dim).to(device)
+#print(f"State Dim: {state_dim}")
+#print(f"Action Dim: {action_dim}")
+
+policy_net = DQN(state_dim=state_dim, action_dim=action_dim, gridDim=50).to(device)
+target_net = DQN(state_dim=state_dim, action_dim=action_dim, gridDim=50).to(device)
 target_net.load_state_dict(policy_net.state_dict())  # Copy the weights from the policy network to the target network
 
 if __name__ == "__main__":
     # 2.) Training Loop
-    episodes = 500
+    episodes = 1000
     BATCH_SIZE = 32 
     GAMMA = 0.25
-    EPSILON_START = 0.9
-    EPSILON_END = 0.05
-    EPSILON_DECAY = 1000
+    EPSILON_START = 0.99
+    EPSILON_END = 0.075
+    EPSILON_DECAY = 900
     LR = 1e-3
     CRITERION = nn.SmoothL1Loss()
     OPTIMIZER = optim.AdamW(policy_net.parameters(), lr=LR, amsgrad=True)
@@ -217,7 +250,8 @@ if __name__ == "__main__":
         epsilon_decay=EPSILON_DECAY,
         gamma=GAMMA,
         criterion=CRITERION,
-        optimizer=OPTIMIZER
+        optimizer=OPTIMIZER,
+        gridDim=50
     )
 
     def save_models():
