@@ -43,8 +43,8 @@ class DQN(nn.Module):
         self.conv1 = nn.Conv2d(1, 16, kernel_size=5)
         self.conv2 = nn.Conv2d(16, 32, kernel_size=3)
         self.pool = nn.MaxPool2d(2)
-
-        self.convfc1 = nn.Linear(32 * 10 * 10, 128)
+        self.pool2 = nn.MaxPool2d(4)
+        self.convfc1 = nn.Linear(800, 128)
         self.convfc2 = nn.Linear(128, 64)
         self.convfc3_solo = nn.Linear(64, action_dim)
 
@@ -60,19 +60,24 @@ class DQN(nn.Module):
         batch_size = input.size(0)
 
         image = input[:, :self.gridDim * self.gridDim].view(batch_size, 1, self.gridDim, self.gridDim)
+
+        """
         dense = input[:, self.gridDim * self.gridDim:]
 
         lin = self.relu(self.fc1(dense))
         lin = self.relu(self.fc2(lin))
+        """
 
         conv = self.pool(self.relu(self.conv1(image)))
-        conv = self.pool(self.relu(self.conv2(conv)))
+        conv = self.pool2(self.relu(self.conv2(conv)))
         conv = torch.flatten(conv, start_dim=1)
         conv = self.relu(self.convfc1(conv))
         conv = self.relu(self.convfc2(conv))
 
-        combined_output = torch.cat((conv, lin), dim=1)
-        output = self.combined_pred(combined_output)
+        output = self.relu(self.convfc3_solo(conv))
+        print(output.shape)
+        #combined_output = torch.cat((conv, lin), dim=1)
+        #output = self.combined_pred(combined_output)
         return output
 
 
@@ -101,10 +106,10 @@ class ReplayMemory(object):
 def train(policy_network, target_network,
           episodes, batch_size, 
           epsilon, epsilon_end, epsilon_decay, gamma, criterion, optimizer,
-          gridDim):
+          gridDim, env):
 
     all_reward_sequences = []  # For graphing down the line
-    replaysampler = ReplayMemory(capacity=25000)
+    replaysampler = ReplayMemory(capacity=2000)
     for episode in range(episodes):
         accumulated_reward = 0
 
@@ -117,7 +122,7 @@ def train(policy_network, target_network,
         current_state = flatten(env.observation_space, start_state)  # current_state is a flat numpy array
 
         for t in range(1000):  # Keep running until allocated energy is gone
-
+            
             action_epsilon_chance = np.random.rand()
 
             if action_epsilon_chance < epsilon:
@@ -230,7 +235,7 @@ target_net.load_state_dict(policy_net.state_dict())  # Copy the weights from the
 
 if __name__ == "__main__":
     # 2.) Training Loop
-    episodes = 1000
+    episodes = 50
     BATCH_SIZE = 32 
     GAMMA = 0.25
     EPSILON_START = 0.99
@@ -241,17 +246,14 @@ if __name__ == "__main__":
     OPTIMIZER = optim.AdamW(policy_net.parameters(), lr=LR, amsgrad=True)
 
     policy_network, target_network, all_reward_sequences = train(
-        policy_network=policy_net,
-        target_network=target_net,
+        policy_network=policy_net, target_network=target_net,
         episodes=episodes,
         batch_size=BATCH_SIZE,
-        epsilon=EPSILON_START,
-        epsilon_end = EPSILON_END,
-        epsilon_decay=EPSILON_DECAY,
+        epsilon=EPSILON_START, epsilon_end = EPSILON_END, epsilon_decay=EPSILON_DECAY,
         gamma=GAMMA,
-        criterion=CRITERION,
-        optimizer=OPTIMIZER,
-        gridDim=50
+        criterion=CRITERION, optimizer=OPTIMIZER,
+        gridDim=50,
+        env = JustDoIt()
     )
 
     def save_models():

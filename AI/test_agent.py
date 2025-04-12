@@ -33,7 +33,7 @@ if __name__ == "__main__":
     rewards = []
     done = False
 
-    epsilon = 0.1  # Adjust as needed
+    epsilon = 0.0  # Adjust as needed
 
     for step in range(200):
         with torch.no_grad():

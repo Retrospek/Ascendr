@@ -5,13 +5,17 @@ import random
 from gymnasium.spaces.utils import flatten
 from V1env import JustDoIt
 
+np.set_printoptions(threshold=np.inf, linewidth=200)
+
 if __name__ == "__main__":
     env = JustDoIt()
 
     obs, _ = env.reset()
     state = flatten(env.observation_space, obs)  
+    print(obs)
     accum_reward = 0
     rewards = []
+    individual_rewards = []
     done = False
 
     for _ in range(200):
@@ -31,8 +35,10 @@ if __name__ == "__main__":
 
         obs, reward, done, info, _ = env.step(action)
         print(f"Image Observation: {obs["environment_image"]}")
+        print(env.climbr.arms[0].location)
         accum_reward += reward
         rewards.append(accum_reward)
+        individual_rewards.append(reward)
 
         state = flatten(env.observation_space, obs)
 
@@ -49,4 +55,11 @@ if __name__ == "__main__":
     plt.grid(True)
     plt.show()
 
+
+    plt.plot(individual_rewards, marker='x')
+    plt.xlabel("Step")
+    plt.ylabel("Reward")
+    plt.title("Individual Rewards")
+    plt.grid(True)
+    plt.show()
     env.close()

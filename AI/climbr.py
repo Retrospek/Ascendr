@@ -5,7 +5,7 @@ from matplotlib.widgets import Slider, Button
 
 
 class arm():
-    def __init__(self, torso_loc = np.array([0, 0]), length = 2, angle = 0, grabbing=True):
+    def __init__(self, torso_loc = np.array([25, 25]), length = 2, angle = 0, grabbing=True):
         self.length = length
         self.angle = np.radians(angle)
         self.location = np.array([torso_loc[0] + length * np.cos(self.angle), torso_loc[1] + length * np.sin(self.angle)])
@@ -20,11 +20,11 @@ class arm():
         self.grabbing = False
 
 class torso():
-    def __init__(self, location = np.asarray((0, 0))):
+    def __init__(self, location = np.asarray((24, 24))):
         self.location = location
 
 class climbr:
-    def __init__(self, start_loc = np.asarray((0, 0)), arm_lengths = np.array([2]), arm_degrees = np.array([10]), energy=1000):
+    def __init__(self, start_loc = np.asarray((24, 24)), arm_lengths = np.array([2]), arm_degrees = np.array([10]), energy=750):
         self.torso = torso(location = start_loc)
         self.arms = [arm(length=arm_lengths[i], angle=arm_degrees[i]) for i in range(len(arm_lengths))] # 0 = Right and 1 = Left <= Indices
         self.energy = energy
