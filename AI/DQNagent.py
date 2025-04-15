@@ -42,11 +42,12 @@ class DQN(nn.Module):
 
         self.conv1 = nn.Conv2d(1, 16, kernel_size=5)
         self.conv2 = nn.Conv2d(16, 32, kernel_size=3)
-        self.pool = nn.MaxPool2d(2)
-        self.pool2 = nn.MaxPool2d(4)
-        self.convfc1 = nn.Linear(800, 128)
-        self.convfc2 = nn.Linear(128, 64)
-        self.convfc3_solo = nn.Linear(64, action_dim)
+        self.pool = nn.MaxPool2d(4)
+        self.pool2 = nn.MaxPool2d(2)
+        self.convfc1 = nn.Linear(512, 256)
+        self.convfc2 = nn.Linear(256, 128)
+        self.convfc3 = nn.Linear(128, 64)
+        self.convfc4_solo = nn.Linear(64, action_dim)
 
         self.fc1 = nn.Linear(state_dim - gridDim ** 2, 256)
         self.fc2 = nn.Linear(256, 64)
@@ -73,8 +74,9 @@ class DQN(nn.Module):
         conv = torch.flatten(conv, start_dim=1)
         conv = self.relu(self.convfc1(conv))
         conv = self.relu(self.convfc2(conv))
+        conv = self.relu(self.convfc3(conv))
 
-        output = self.relu(self.convfc3_solo(conv))
+        output = self.relu(self.convfc4_solo(conv))
         print(output.shape)
         #combined_output = torch.cat((conv, lin), dim=1)
         #output = self.combined_pred(combined_output)
@@ -103,13 +105,15 @@ class ReplayMemory(object):
         return len(self.memory)
 
 
+
+
 def train(policy_network, target_network,
           episodes, batch_size, 
           epsilon, epsilon_end, epsilon_decay, gamma, criterion, optimizer,
           gridDim, env):
 
     all_reward_sequences = []  # For graphing down the line
-    replaysampler = ReplayMemory(capacity=2000)
+    replaysampler = ReplayMemory(capacity=1500)
     for episode in range(episodes):
         accumulated_reward = 0
 
@@ -121,7 +125,7 @@ def train(policy_network, target_network,
         start_state, _ = env.reset()
         current_state = flatten(env.observation_space, start_state)  # current_state is a flat numpy array
 
-        for t in range(1000):  # Keep running until allocated energy is gone
+        for t in range(400):  # Keep running until allocated energy is gone
             
             action_epsilon_chance = np.random.rand()
 
@@ -236,12 +240,12 @@ target_net.load_state_dict(policy_net.state_dict())  # Copy the weights from the
 if __name__ == "__main__":
     # 2.) Training Loop
     episodes = 50
-    BATCH_SIZE = 32 
-    GAMMA = 0.25
-    EPSILON_START = 0.99
-    EPSILON_END = 0.075
-    EPSILON_DECAY = 900
-    LR = 1e-3
+    BATCH_SIZE = 32
+    GAMMA = 0.6
+    EPSILON_START = 0.995
+    EPSILON_END = 0.15
+    EPSILON_DECAY = 800
+    LR = 1.25e-3
     CRITERION = nn.SmoothL1Loss()
     OPTIMIZER = optim.AdamW(policy_net.parameters(), lr=LR, amsgrad=True)
 

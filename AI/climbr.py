@@ -33,7 +33,7 @@ class climbr:
 
     def release(self, side):
         self.arms[side].release()
-
+    
     def shift_arm(self, side, angle):
         theta = np.radians(angle)
         if(self.arms[side].grabbing == False):

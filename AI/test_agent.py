@@ -33,9 +33,9 @@ if __name__ == "__main__":
     rewards = []
     done = False
 
-    epsilon = 0.0  # Adjust as needed
+    epsilon = 0.1  # Adjust as needed
 
-    for step in range(200):
+    for step in range(1000):
         with torch.no_grad():
             if random.random() < epsilon:
                 action = random.randint(0, action_dim - 1)

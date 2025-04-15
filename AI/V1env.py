@@ -2,7 +2,7 @@ import gymnasium as gym
 import numpy as np
 from climbr import *
 import matplotlib.pyplot as plt
-
+import pygame 
 class JustDoIt(gym.Env):
     def __init__(self, gridDim = 50, holds = np.column_stack((np.full((100,), 25), np.linspace(0, 50, 100, endpoint=False))), angleChange = 10, energy=500):
         self.gridDim = gridDim
@@ -122,14 +122,50 @@ class JustDoIt(gym.Env):
             if(arm_location[0] > 50 or arm_location[1] > 50 or arm_location[0] < 0 or arm_location[1] < 0):
                 end = True
                 reward = -1000
-        if action == 1:
-            self.climbr.arms[0].release()
-        if action == 2:
+
+            # Theta/Vector direction logic
+            # Torso->Target Vector
+            torso_target_vector = (self.target_hold[0] - self.climbr.torso.location[0],
+                                    self.target_hold[1] -self.climbr.torso.location[1])
+            # Torso->Arm Vector
+            torso_arm_vector = (self.climbr.arms[0].location[0] - self.climbr.torso.location[0],
+                                self.climbr.arms[0].location[1] - self.climbr.torso.location[1])
+            
+            # Cosine Similarity
+
+            cosine_sim = np.dot(torso_target_vector, torso_arm_vector) / (np.linalg.norm(torso_target_vector) * np.linalg.norm(torso_arm_vector))
+                # Note: range is (-1, 1)
+            boost = cosine_sim * 3
+            if(boost < 0):
+                boost /=2
+            print(f"Boost: {boost}")
+            reward += 1 + boost
+
+        elif action == 1:
+            self.climbr.arms[0].release()           
+
+            torso_target_vector = (self.target_hold[0] - self.climbr.torso.location[0],
+                                    self.target_hold[1] -self.climbr.torso.location[1])
+            # Torso->Arm Vector
+            torso_arm_vector = (self.climbr.arms[0].location[0] - self.climbr.torso.location[0],
+                                self.climbr.arms[0].location[1] - self.climbr.torso.location[1])
+            
+            # Cosine Similarity
+
+            cosine_sim = np.dot(torso_target_vector, torso_arm_vector) / (np.linalg.norm(torso_target_vector) * np.linalg.norm(torso_arm_vector))
+                # Note: range is (-1, 1)
+            boost = cosine_sim * 3
+            if(boost < 0):
+                boost /=2
+            print(f"Boost: {boost}")
+            reward += 1 - boost
+
+        elif action == 2:
             self.climbr.shift_arm(0, self.angleChange)
-        if action == 3:
+        elif action == 3:
             self.climbr.shift_arm(0, -1 * self.angleChange)
 
-        reward += -1
+        reward += -0.5
 
         #Incorporating a average limb and torso accumalated difference to target
         original_distance_from_target_TORSO = self.inner_state['distance_from_target_TORSO']
@@ -145,22 +181,27 @@ class JustDoIt(gym.Env):
 
         average_body_delta = (torso_distance_delta + arm_distance_delta) / 2.0
 
+        if(np.sign(average_body_delta) < 0):
+            reward += -100
+        elif(np.sign(average_body_delta) > 0):
+            reward += 100
+        #reward += 50 * np.sign(average_body_delta) * np.sqrt(torso_distance_delta**2 + arm_distance_delta**2) # -1 is makes it better for the negative delta because that means closer
+
         # Discourages to be the same distance away 
         # Implement some check backwards 18 elements because at most it should be rotating 180 degrees an arm
-        if(action != 0 and action !=1):
-            torso_loc_tuple = tuple(self.climbr.torso.location)
-            arm_loc_tuple = tuple(self.climbr.arms[0].location)
-            if(self.climbr.arms[0].grabbing and torso_loc_tuple in self.past_distance_deltas_torso):
-                reward += -1
-                #print("HERE")
-            elif(not self.climbr.arms[0].grabbing and arm_loc_tuple in self.past_distance_deltas_armR):
-                reward += -1
+        
+        torso_loc_tuple = tuple(self.climbr.torso.location)
+        arm_loc_tuple = tuple(self.climbr.arms[0].location)
+        if(torso_loc_tuple in self.past_distance_deltas_torso and arm_loc_tuple in self.past_distance_deltas_armR):
+            if action == 0 or action == 1:
+                reward += -1.5
+            if action == 2 or action == 3:
+                reward += -10
+            
                 #print("HERE")
         self.past_distance_deltas_torso.add(tuple(self.climbr.torso.location))
         self.past_distance_deltas_armR.add(tuple(self.climbr.arms[0].location))
 
-
-        reward += 5 * np.sign(average_body_delta) * np.sqrt(torso_distance_delta**2 + arm_distance_delta**2) # -1 is makes it better for the negative delta because that means closer
         #print(f"ABD: {average_body_delta}")
         #print(f"TD: {torso_distance_delta}")
         #print(f"AD: {arm_distance_delta}")
@@ -210,22 +251,24 @@ class JustDoIt(gym.Env):
     def render(self):
         self.ax.clear()
 
+        # Plot holds if available.
         if self.holds.size > 0:
             self.ax.plot(self.holds[:, 0], self.holds[:, 1], 'go', markersize=6, label="Holds")
 
+        # Plot torso location.
         torso_loc = self.climbr.torso.location
         self.ax.plot(torso_loc[0], torso_loc[1], 'bo', markersize=10, label="Torso")
 
-        if self.climbr.arms[0].grabbing:
-            endpoint = self.climbr.arms[0].location
-        else:
-            theta = self.climbr.arms[0].angle
-            endpoint = torso_loc + self.climbr.arms[0].length * np.array([np.cos(theta), np.sin(theta)])
+        # Always use the stored arm location as the endpoint.
+        endpoint = self.climbr.arms[0].location
+
+        # Draw the arm from torso to endpoint and mark the endpoint.
         self.ax.plot([torso_loc[0], endpoint[0]],
                     [torso_loc[1], endpoint[1]],
                     'r-', lw=2, label="Arm")
         self.ax.plot(endpoint[0], endpoint[1], 'ko', markersize=6)
 
+        # Set display parameters.
         self.ax.set_xlim(0, 50)
         self.ax.set_ylim(0, 50)
         self.ax.set_xlabel("X")

@@ -12,7 +12,6 @@ if __name__ == "__main__":
 
     obs, _ = env.reset()
     state = flatten(env.observation_space, obs)  
-    print(obs)
     accum_reward = 0
     rewards = []
     individual_rewards = []
@@ -34,8 +33,8 @@ if __name__ == "__main__":
                 print("Invalid input. Please enter a valid integer.")
 
         obs, reward, done, info, _ = env.step(action)
-        print(f"Image Observation: {obs["environment_image"]}")
-        print(env.climbr.arms[0].location)
+        #print(f"Image Observation: {obs["environment_image"]}")
+        #print(env.climbr.arms[0].location)
         accum_reward += reward
         rewards.append(accum_reward)
         individual_rewards.append(reward)
