@@ -111,7 +111,7 @@ class JustDoIt(gym.Env):
         }
         return self.inner_state, {}
     
-    def step(self, action): # Remember the action is typically sampled stochastically until the policy has been refine by the optimal q values, and then the policy pi will behave greedily
+    def step(self, action): # Remember the action is typically sampled on the concept of correct "approximations" until the policy has been refine by the optimal q values, and then the policy pi will behave greedily
         end = False
         reward = 0
 
