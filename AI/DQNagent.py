@@ -42,12 +42,12 @@ class DQN(nn.Module):
 
         self.conv1 = nn.Conv2d(1, 16, kernel_size=5)
         self.conv2 = nn.Conv2d(16, 32, kernel_size=3)
-        self.pool = nn.MaxPool2d(4)
-        self.pool2 = nn.MaxPool2d(2)
-        self.convfc1 = nn.Linear(512, 256)
-        self.convfc2 = nn.Linear(256, 128)
-        self.convfc3 = nn.Linear(128, 64)
-        self.convfc4_solo = nn.Linear(64, action_dim)
+        self.pool = nn.MaxPool2d(2, stride=2)
+        self.pool2 = nn.MaxPool2d(2, stride=2)
+        self.convfc1 = nn.Linear(800, 512)
+        self.convfc2 = nn.Linear(512, 256)
+        self.convfc3 = nn.Linear(256, 128)
+        self.convfc4_solo = nn.Linear(128, action_dim)
 
         self.fc1 = nn.Linear(state_dim - gridDim ** 2, 256)
         self.fc2 = nn.Linear(256, 64)
@@ -233,19 +233,19 @@ state_dim = flattened_obs_space.shape[0]
 #print(f"State Dim: {state_dim}")
 #print(f"Action Dim: {action_dim}")
 
-policy_net = DQN(state_dim=state_dim, action_dim=action_dim, gridDim=50).to(device)
-target_net = DQN(state_dim=state_dim, action_dim=action_dim, gridDim=50).to(device)
+policy_net = DQN(state_dim=state_dim, action_dim=action_dim, gridDim=30).to(device)
+target_net = DQN(state_dim=state_dim, action_dim=action_dim, gridDim=30).to(device)
 target_net.load_state_dict(policy_net.state_dict())  # Copy the weights from the policy network to the target network
 
 if __name__ == "__main__":
     # 2.) Training Loop
-    episodes = 50
+    episodes = 75
     BATCH_SIZE = 32
-    GAMMA = 0.6
+    GAMMA = 0.7
     EPSILON_START = 0.995
-    EPSILON_END = 0.15
+    EPSILON_END = 0.135
     EPSILON_DECAY = 800
-    LR = 1.25e-3
+    LR = 1.1e-3
     CRITERION = nn.SmoothL1Loss()
     OPTIMIZER = optim.AdamW(policy_net.parameters(), lr=LR, amsgrad=True)
 

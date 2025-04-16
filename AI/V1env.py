@@ -4,7 +4,7 @@ from climbr import *
 import matplotlib.pyplot as plt
 import pygame 
 class JustDoIt(gym.Env):
-    def __init__(self, gridDim = 50, holds = np.column_stack((np.full((100,), 25), np.linspace(0, 50, 100, endpoint=False))), angleChange = 10, energy=500):
+    def __init__(self, gridDim = 30, holds = np.column_stack((np.full((100,), 15), np.linspace(0, 30, 100, endpoint=False))), angleChange = 10, energy=500):
         self.gridDim = gridDim
         self.angleChange = angleChange
         target_idx = np.random.randint(0, len(holds))
@@ -67,6 +67,7 @@ class JustDoIt(gym.Env):
         }
 
         self.fig, self.ax = plt.subplots()
+        
 
     def update_goal_radius(self, current_episode, max_episodes):
         initial_radius = 3.0
@@ -119,7 +120,7 @@ class JustDoIt(gym.Env):
 
             arm_location = self.climbr.arms[0].location
 
-            if(arm_location[0] > 50 or arm_location[1] > 50 or arm_location[0] < 0 or arm_location[1] < 0):
+            if(arm_location[0] > self.gridDim or arm_location[1] > self.gridDim or arm_location[0] < 0 or arm_location[1] < 0):
                 end = True
                 reward = -1000
 
@@ -135,11 +136,11 @@ class JustDoIt(gym.Env):
 
             cosine_sim = np.dot(torso_target_vector, torso_arm_vector) / (np.linalg.norm(torso_target_vector) * np.linalg.norm(torso_arm_vector))
                 # Note: range is (-1, 1)
-            boost = cosine_sim * 3
+            boost = cosine_sim * 10
             if(boost < 0):
                 boost /=2
             print(f"Boost: {boost}")
-            reward += 1 + boost
+            reward += 15 + boost
 
         elif action == 1:
             self.climbr.arms[0].release()           
@@ -154,18 +155,18 @@ class JustDoIt(gym.Env):
 
             cosine_sim = np.dot(torso_target_vector, torso_arm_vector) / (np.linalg.norm(torso_target_vector) * np.linalg.norm(torso_arm_vector))
                 # Note: range is (-1, 1)
-            boost = cosine_sim * 3
+            boost = cosine_sim * 10
             if(boost < 0):
                 boost /=2
-            print(f"Boost: {boost}")
-            reward += 1 - boost
+            #print(f"Boost: {boost}")
+            reward += 15 - boost
 
         elif action == 2:
             self.climbr.shift_arm(0, self.angleChange)
         elif action == 3:
             self.climbr.shift_arm(0, -1 * self.angleChange)
 
-        reward += -0.5
+        reward += -2
 
         #Incorporating a average limb and torso accumalated difference to target
         original_distance_from_target_TORSO = self.inner_state['distance_from_target_TORSO']
@@ -182,7 +183,7 @@ class JustDoIt(gym.Env):
         average_body_delta = (torso_distance_delta + arm_distance_delta) / 2.0
 
         if(np.sign(average_body_delta) < 0):
-            reward += -100
+            reward += -25
         elif(np.sign(average_body_delta) > 0):
             reward += 100
         #reward += 50 * np.sign(average_body_delta) * np.sqrt(torso_distance_delta**2 + arm_distance_delta**2) # -1 is makes it better for the negative delta because that means closer
@@ -193,8 +194,6 @@ class JustDoIt(gym.Env):
         torso_loc_tuple = tuple(self.climbr.torso.location)
         arm_loc_tuple = tuple(self.climbr.arms[0].location)
         if(torso_loc_tuple in self.past_distance_deltas_torso and arm_loc_tuple in self.past_distance_deltas_armR):
-            if action == 0 or action == 1:
-                reward += -1.5
             if action == 2 or action == 3:
                 reward += -10
             
@@ -205,7 +204,7 @@ class JustDoIt(gym.Env):
         #print(f"ABD: {average_body_delta}")
         #print(f"TD: {torso_distance_delta}")
         #print(f"AD: {arm_distance_delta}")
-        if(np.linalg.norm(self.target_hold - self.climbr.arms[0].location) <= 1.5): # Within Arm Range
+        if(np.linalg.norm(self.target_hold - self.climbr.arms[0].location) <= 1.5 or np.linalg.norm(self.target_hold - self.climbr.torso.location) <= 1.5): # Within Arm Range
            end = True
            reward += 200
 
@@ -248,29 +247,23 @@ class JustDoIt(gym.Env):
 
         return self.inner_state, reward, end, {}, {}
 
-    def render(self):
+    def render(self, show=True):
         self.ax.clear()
 
-        # Plot holds if available.
         if self.holds.size > 0:
             self.ax.plot(self.holds[:, 0], self.holds[:, 1], 'go', markersize=6, label="Holds")
 
-        # Plot torso location.
         torso_loc = self.climbr.torso.location
         self.ax.plot(torso_loc[0], torso_loc[1], 'bo', markersize=10, label="Torso")
 
-        # Always use the stored arm location as the endpoint.
         endpoint = self.climbr.arms[0].location
-
-        # Draw the arm from torso to endpoint and mark the endpoint.
         self.ax.plot([torso_loc[0], endpoint[0]],
                     [torso_loc[1], endpoint[1]],
                     'r-', lw=2, label="Arm")
         self.ax.plot(endpoint[0], endpoint[1], 'ko', markersize=6)
 
-        # Set display parameters.
-        self.ax.set_xlim(0, 50)
-        self.ax.set_ylim(0, 50)
+        self.ax.set_xlim(0, self.gridDim)
+        self.ax.set_ylim(0, self.gridDim)
         self.ax.set_xlabel("X")
         self.ax.set_ylabel("Y")
         self.ax.set_title("Climber State (1 Arm)")
@@ -278,7 +271,9 @@ class JustDoIt(gym.Env):
         self.ax.legend()
 
         self.fig.canvas.draw()
-        plt.pause(0.001)
+        if show:
+            plt.show(block=False)
+            plt.pause(0.001)
 
     def close(self):
         plt.ioff()
