@@ -2,6 +2,10 @@
 
 Ascendr is a climbing simulation environment built on top of [Gymnasium](https://gymnasium.farama.org/). The project provides a physics-based simulation where a climber interacts with holds on a climbing wall. Whether you're experimenting with reinforcement learning algorithms like DQN or just want to play manually, Ascendr offers a versatile platform for climbing simulation.
 
+
+https://github.com/user-attachments/assets/359016dd-8d1a-49f2-9488-fc55400a9da7
+
+
 ## Features
 
 - **Custom Gym Environment**: Implements the `JustDoIt` environment with a discrete action space.
