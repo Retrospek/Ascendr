@@ -1,9 +1,10 @@
 import gymnasium as gym
 import numpy as np
-from climbr import *
+from v1_1arm.climbrV1 import climbrV1
+import math
 import matplotlib.pyplot as plt
-import pygame 
-class JustDoIt(gym.Env):
+
+class JustDoItV1(gym.Env):
     def __init__(self, gridDim = 30, holds = np.column_stack((np.full((100,), 15), np.linspace(0, 30, 100, endpoint=False))), angleChange = 10, energy=500):
         self.gridDim = gridDim
         self.angleChange = angleChange
@@ -11,7 +12,7 @@ class JustDoIt(gym.Env):
         self.target_hold = holds[target_idx] # The last possible hold
         self.holds = holds
 
-        self.climbr = climbr() # Let's just use default characteristics
+        self.climbr = climbrV1() # Let's just use default characteristics
         self.energy = self.climbr.energy
         self.rewards = []
 
@@ -77,7 +78,7 @@ class JustDoIt(gym.Env):
 
     def reset(self):
         # Now I need to reset the environment from above
-        self.climbr = climbr()
+        self.climbr = climbrV1()
         self.target_hold = self.holds[-1]
         self.rewards = []
         self.energy = self.climbr.energy

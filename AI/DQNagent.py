@@ -7,6 +7,9 @@ import gymnasium as gym
 from gymnasium.spaces import flatten_space
 from gymnasium.spaces.utils import flatten
 
+# Model Include
+from models import UNOarm
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -20,67 +23,14 @@ import matplotlib.pyplot as plt
 
 import itertools
 
-from V1env import JustDoIt
+from v1_1arm.V1env import JustDoItV1
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # This is basically just a function approximater that takes the form V(s, w), where the weights are learned in the DQN.
 # We are using a Q-Learning (deep) because off of my current intuition there's no sense of risk as of yet when it comes to certain actions taken place.
-class DQN(nn.Module):
-    
-    def __init__(self, state_dim, action_dim, gridDim):
-        # DQN Model
-        # -------------------------------------------
-        # Args:
-        # - state_dim (int): Dimension of flattened state space
-        # - action_dim (int): Number of discrete actions
-        # - gridDim (int): Width/height of square image grid (e.g., 50)
-        # -------------------------------------------
-        super(DQN, self).__init__()
 
-        self.gridDim = gridDim
 
-        self.conv1 = nn.Conv2d(1, 16, kernel_size=5)
-        self.conv2 = nn.Conv2d(16, 32, kernel_size=3)
-        self.pool = nn.MaxPool2d(2, stride=2)
-        self.pool2 = nn.MaxPool2d(2, stride=2)
-        self.convfc1 = nn.Linear(800, 512)
-        self.convfc2 = nn.Linear(512, 256)
-        self.convfc3 = nn.Linear(256, 128)
-        self.convfc4_solo = nn.Linear(128, action_dim)
-
-        self.fc1 = nn.Linear(state_dim - gridDim ** 2, 256)
-        self.fc2 = nn.Linear(256, 64)
-        self.fc3_solo = nn.Linear(64, action_dim)
-
-        self.combined_pred = nn.Linear(128, action_dim)
-
-        self.relu = nn.ReLU()
-
-    def forward(self, input):
-        batch_size = input.size(0)
-
-        image = input[:, :self.gridDim * self.gridDim].view(batch_size, 1, self.gridDim, self.gridDim)
-
-        """
-        dense = input[:, self.gridDim * self.gridDim:]
-
-        lin = self.relu(self.fc1(dense))
-        lin = self.relu(self.fc2(lin))
-        """
-
-        conv = self.pool(self.relu(self.conv1(image)))
-        conv = self.pool2(self.relu(self.conv2(conv)))
-        conv = torch.flatten(conv, start_dim=1)
-        conv = self.relu(self.convfc1(conv))
-        conv = self.relu(self.convfc2(conv))
-        conv = self.relu(self.convfc3(conv))
-
-        output = self.relu(self.convfc4_solo(conv))
-        print(output.shape)
-        #combined_output = torch.cat((conv, lin), dim=1)
-        #output = self.combined_pred(combined_output)
-        return output
 
 
 """
@@ -125,16 +75,14 @@ def train(policy_network, target_network,
         start_state, _ = env.reset()
         current_state = flatten(env.observation_space, start_state)  # current_state is a flat numpy array
 
-        for t in range(400):  # Keep running until allocated energy is gone
+        for t in range(400):  
             
             action_epsilon_chance = np.random.rand()
 
             if action_epsilon_chance < epsilon:
-                # Exploration branch: sample a random action
                 sampled_action = env.action_space.sample()
                 next_state, reward, end, _, _ = env.step(sampled_action)
                 next_state_flat = flatten(env.observation_space, next_state)
-                # Use the flattened current state and next state in the transition
                 transition = Transition(current_state, sampled_action, reward, next_state_flat, end)
                 replaysampler.push(*transition)
             else:
@@ -142,7 +90,6 @@ def train(policy_network, target_network,
                 with torch.no_grad():
                     current_state_tensor = torch.tensor(current_state, dtype=torch.float32, device=device).unsqueeze(0)
                     model_q_values = policy_network(current_state_tensor)
-                    # Convert the tensor result to an integer action
                     action = int(torch.argmax(model_q_values).item())
                 next_state, reward, end, _, _ = env.step(action)
                 next_state_flat = flatten(env.observation_space, next_state)
@@ -225,7 +172,7 @@ Steps:
 
 # 1.) Setting Up the Environment & The dual Weilding DQN networks
 
-env = JustDoIt()
+env = JustDoItV1()
 action_dim = 4
 flattened_obs_space = flatten_space(env.observation_space)
 state_dim = flattened_obs_space.shape[0]
@@ -233,8 +180,8 @@ state_dim = flattened_obs_space.shape[0]
 #print(f"State Dim: {state_dim}")
 #print(f"Action Dim: {action_dim}")
 
-policy_net = DQN(state_dim=state_dim, action_dim=action_dim, gridDim=30).to(device)
-target_net = DQN(state_dim=state_dim, action_dim=action_dim, gridDim=30).to(device)
+policy_net = UNOarm(state_dim=state_dim, action_dim=action_dim, gridDim=30).to(device)
+target_net = UNOarm(state_dim=state_dim, action_dim=action_dim, gridDim=30).to(device)
 target_net.load_state_dict(policy_net.state_dict())  # Copy the weights from the policy network to the target network
 
 if __name__ == "__main__":
@@ -257,7 +204,7 @@ if __name__ == "__main__":
         gamma=GAMMA,
         criterion=CRITERION, optimizer=OPTIMIZER,
         gridDim=50,
-        env = JustDoIt()
+        env = JustDoItV1()
     )
 
     def save_models():

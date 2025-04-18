@@ -3,12 +3,12 @@ import matplotlib.pyplot as plt
 import torch
 import random
 from gymnasium.spaces.utils import flatten
-from V1env import JustDoIt
+from v1_1arm.V1env import JustDoItV1
 
 np.set_printoptions(threshold=np.inf, linewidth=200)
 
 if __name__ == "__main__":
-    env = JustDoIt()
+    env = JustDoItV1()
 
     obs, _ = env.reset()
     state = flatten(env.observation_space, obs)  
