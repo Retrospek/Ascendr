@@ -1,5 +1,3 @@
-
-
 import torch
 import torch.nn as nn
 from torch.utils.tensorboard import SummaryWriter
@@ -8,6 +6,8 @@ writer = SummaryWriter(log_dir='./runs/experiment_1')
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+# This is basically just a function approximater that takes the form V(s, w), where the weights are learned in the DQN.
+# We are using a Q-Learning (deep) because off of my current intuition there's no sense of risk as of yet when it comes to certain actions taken place.
 class UNOarm(nn.Module):
     
     def __init__(self, state_dim, action_dim, gridDim):
@@ -63,3 +63,4 @@ class UNOarm(nn.Module):
         #combined_output = torch.cat((conv, lin), dim=1)
         #output = self.combined_pred(combined_output)
         return output
+    
