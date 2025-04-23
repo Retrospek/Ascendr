@@ -5,8 +5,13 @@ import torch
 import random
 from gymnasium.spaces import flatten_space
 from gymnasium.spaces.utils import flatten
+
+# <><><>><><><><><><><> SWAP THESE FOR CUSTOM EVALUATION<><><><><><><>#
 from v1_1arm.V1env import JustDoItV1 
-from models import UNOarm  # Import your network definition
+from DQNmodels import UNOarm  # Import your network definition
+# <><><>><><><><><><><><><><><><><><><><><>><><><><><><><><><><><><><>#
+
+model_dict_path = 'AI/v1_1arm/policy_state_dict.pth'
 
 plt.ioff()  # Disable interactive mode to prevent extra windows
 
@@ -21,7 +26,7 @@ if __name__ == "__main__":
 
     # Create your network using the computed state dimension.
     target = UNOarm(state_dim=state_dim, action_dim=action_dim, gridDim=30)
-    target.load_state_dict(torch.load('AI/v1_1arm/policy_state_dict.pth', map_location=device))
+    target.load_state_dict(torch.load(model_dict_path, map_location=device))
     target.to(device)
     target.eval()
 

@@ -4,11 +4,12 @@ import torch
 import random
 from gymnasium.spaces.utils import flatten
 from v1_1arm.V1env import JustDoItV1
+from v2_2arm.V2env import JustDoItV2
 
 np.set_printoptions(threshold=np.inf, linewidth=200)
 
 if __name__ == "__main__":
-    env = JustDoItV1()
+    env = JustDoItV2()
 
     obs, _ = env.reset()
     state = flatten(env.observation_space, obs)  
@@ -31,7 +32,7 @@ if __name__ == "__main__":
                     print("Invalid input. Please enter one of 0, 1, 2, or 3.")
             except ValueError:
                 print("Invalid input. Please enter a valid integer.")
-
+                
         obs, reward, done, info, _ = env.step(action)
         #print(f"Image Observation: {obs["environment_image"]}")
         #print(env.climbr.arms[0].location)

@@ -8,7 +8,7 @@ from gymnasium.spaces import flatten_space
 from gymnasium.spaces.utils import flatten
 
 # Model Include
-from models import UNOarm
+from AI.DQNmodels import UNOarm
 
 import torch
 import torch.nn as nn
@@ -26,12 +26,6 @@ import itertools
 from v1_1arm.V1env import JustDoItV1
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-# This is basically just a function approximater that takes the form V(s, w), where the weights are learned in the DQN.
-# We are using a Q-Learning (deep) because off of my current intuition there's no sense of risk as of yet when it comes to certain actions taken place.
-
-
-
 
 """
 We will implement the ReplayMemory class ->:

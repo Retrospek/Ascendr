@@ -19,20 +19,20 @@ class JustDoItV2(gym.Env):
         self.past_distance_deltas_torso = set()
         self.past_distance_deltas_armR = set()
         #CHANGING THIS \/ in the future
-        self.action_space = gym.spaces.Discrete(4) # 0: Hold, 1:Let Go, 2:Shifting(Implicitely this takes care of the 2 states of the arm grabbing or not holding innately)
+        self.action_space = gym.spaces.Discrete(8) # 0: Hold, 1:Let Go, 2:Shifting(Implicitely this takes care of the 2 states of the arm grabbing or not holding innately)
         # In reality it is 4 actions ^^^^^^, but the other two actions are built into one function
         # The Observation Space Structure
         self.observation_space = gym.spaces.Dict(
             {
                 "environment_image": gym.spaces.Box(low=0, high = 4, shape=(gridDim, gridDim), dtype=np.int32),
-                "torso_location": gym.spaces.Box(low=-25, high=25, shape=(2,), dtype=np.float32),
-                "arm_location": gym.spaces.Box(low=-25, high=25, shape=(2,), dtype=np.float32),
+                "torso_location": gym.spaces.Box(low=-25, high=25, shape=(2, ), dtype=np.float32),
+                "arm_locations": gym.spaces.Box(low=-25, high=25, shape=(2, len(self.climbr.arms)), dtype=np.float32),
                 "arm_grabbing_status": gym.spaces.MultiBinary(len(self.climbr.arms)),
                 #"holds": gym.spaces.Box(low=-25, high=25, shape=(len(self.holds), 2), dtype=np.float32),
                 "average_distance_delta": gym.spaces.Box(low=-25, high=25, shape=(1,), dtype=np.float32),
                 "target_hold": gym.spaces.Box(low=-25, high=25, shape=(2,), dtype=np.float32),
                 "distance_from_target_TORSO": gym.spaces.Box(low=0, high=np.inf, shape=(1,), dtype=np.float32),
-                "distance_from_target_ARM": gym.spaces.Box(low=0, high=np.inf, shape=(1,), dtype=np.float32)  # We are experimenting with one arm, so we'll edit this later
+                "distance_from_target_ARMS": gym.spaces.Box(low=0, high=np.inf, shape=(1, len(self.climbr.arms)), dtype=np.float32)  # We are experimenting with one arm, so we'll edit this later
             }
         )
 
@@ -58,23 +58,16 @@ class JustDoItV2(gym.Env):
         self.inner_state = {
             "environment_image": self.environment_picture,
             "torso_location": self.climbr.torso.location,
-            "arm_location": self.climbr.arms[0].location,
+            "arm_locations": [self.climbr.arms[i].location for i in range(len(self.climbr.arms))],
             "arm_grabbing_status": np.array([self.climbr.arms[i].grabbing for i in range(len(self.climbr.arms))], dtype=np.int8),
             #"holds": self.holds,
             "average_distance_delta": 24.99,
             "target_hold": self.target_hold,
             "distance_from_target_TORSO": np.linalg.norm(self.target_hold - self.climbr.torso.location),
-            "distance_from_target_ARM": np.linalg.norm(self.target_hold - self.climbr.arms[0].location)
+            "distance_from_target_ARMS": [(np.linalg.norm(self.target_hold - self.climbr.arms[i].location)) for i in range(len(self.climbr.arms))]
         }
 
         self.fig, self.ax = plt.subplots()
-        
-
-    def update_goal_radius(self, current_episode, max_episodes):
-        initial_radius = 3.0
-        final_radius = 1.5
-        decay = current_episode / max_episodes
-        self.goal_radius = initial_radius * (1 - decay) + final_radius * decay
 
     def reset(self):
         # Now I need to reset the environment from above
@@ -102,13 +95,13 @@ class JustDoItV2(gym.Env):
         self.inner_state = {
             "environment_image": self.environment_picture,
             "torso_location": self.climbr.torso.location,
-            "arm_location": self.climbr.arms[0].location,
+            "arm_locations": [self.climbr.arms[i].location for i in range(len(self.climbr.arms))],
             "arm_grabbing_status": np.array([self.climbr.arms[i].grabbing for i in range(len(self.climbr.arms))], dtype=np.int8),
             #"holds": self.holds,
             "average_distance_delta": 24.99,
             "target_hold": self.target_hold,
             "distance_from_target_TORSO": np.linalg.norm(self.target_hold - self.climbr.torso.location),
-            "distance_from_target_ARM": np.linalg.norm(self.target_hold - self.climbr.arms[0].location)
+            "distance_from_target_ARMS": [(np.linalg.norm(self.target_hold - self.climbr.arms[i].location)) for i in range(len(self.climbr.arms))]
         }
         return self.inner_state, {}
     
@@ -177,7 +170,7 @@ class JustDoItV2(gym.Env):
         torso_distance_delta = original_distance_from_target_TORSO - new_distance_from_target_TORSO
 
 
-        original_distance_from_target_ARM = self.inner_state['distance_from_target_ARM']
+        original_distance_from_target_ARM = self.inner_state['distance_from_target_ARMS']
         new_distance_from_target_ARM = np.linalg.norm(self.target_hold - self.climbr.arms[0].location)
         arm_distance_delta = original_distance_from_target_ARM - new_distance_from_target_ARM
 
@@ -234,11 +227,11 @@ class JustDoItV2(gym.Env):
         self.environment_picture = environment_picture
         self.inner_state['environment_image'] = self.environment_picture
         self.inner_state['torso_location'] = self.climbr.torso.location
-        self.inner_state['arm_location'] = self.climbr.arms[0].location
+        self.inner_state['arm_locations'] = self.climbr.arms[0].location
         self.inner_state["arm_grabbing_status"] = np.array([self.climbr.arms[i].grabbing for i in range(len(self.climbr.arms))], dtype=np.int8),
         self.inner_state['average_distance_delta'] = average_body_delta
         self.inner_state['distance_from_target_TORSO'] = np.linalg.norm(self.target_hold - self.climbr.torso.location)
-        self.inner_state['distance_from_target_ARM'] = np.linalg.norm(self.target_hold - self.climbr.arms[0].location)
+        self.inner_state['distance_from_target_ARMS'] = np.linalg.norm(self.target_hold - self.climbr.arms[0].location)
 
         self.rewards.append(reward) #For Future Analysis
         

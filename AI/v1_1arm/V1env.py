@@ -1,9 +1,8 @@
 import gymnasium as gym
 import numpy as np
-from v1_1arm.climbrV1 import climbrV1
+from climbrV1 import climbrV1
 import math
 import matplotlib.pyplot as plt
-
 class JustDoItV1(gym.Env):
     def __init__(self, gridDim = 30, holds = np.column_stack((np.full((100,), 15), np.linspace(0, 30, 100, endpoint=False))), angleChange = 10, energy=500):
         self.gridDim = gridDim
