@@ -20,7 +20,7 @@ https://github.com/user-attachments/assets/359016dd-8d1a-49f2-9488-fc55400a9da7
   - Target hold details
   - Distance metrics to the target
 - **Real-time Visualization**: Uses `matplotlib` to render the climber’s state and environment.
-- **Reinforcement Learning Ready**: Easily integrate with RL agents such as DQN for training experiments.
+- **Reinforcement Learning Ready**: Easily integrate with different algorithm architectures such as DQN for training experiments.
 
 ## Installation
 
