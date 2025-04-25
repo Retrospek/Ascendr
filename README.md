@@ -30,8 +30,5 @@ https://github.com/user-attachments/assets/359016dd-8d1a-49f2-9488-fc55400a9da7
 
 ### Steps
 
-1. **Clone the Repository**
-   ```bash
-   git clone https://github.com/yourusername/ascendr.git
-   cd ascendr
-   ```
+1. **Please FORK this lol**
+   git pull blah blah blah
