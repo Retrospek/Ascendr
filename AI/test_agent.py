@@ -25,7 +25,7 @@ if __name__ == "__main__":
     action_dim = env.action_space.n
 
     # Create your network using the computed state dimension.
-    target = UNOarm(state_dim=state_dim, action_dim=action_dim, gridDim=30)
+    target = UNOarm_sign_based(state_dim=state_dim, action_dim=action_dim, gridDim=30)
     target.load_state_dict(torch.load(model_dict_path, map_location=device))
     target.to(device)
     target.eval()
@@ -50,7 +50,7 @@ if __name__ == "__main__":
             line.set_data(range(i + 1), rewards[:i + 1])
         return line,
 
-    for step in range(1000):
+    for step in range(555):
         with torch.no_grad():
             if random.random() < epsilon:
                 action = random.randint(0, action_dim - 1)

@@ -170,7 +170,7 @@ class JustDoItV1(gym.Env):
         elif action == 3:
             self.climbr.shift_arm(0, -1 * self.angleChange)
 
-        reward += -10
+        reward += -5
 
         #Incorporating a average limb and torso accumalated difference to target
         original_distance_from_target_TORSO = self.inner_state['distance_from_target_TORSO']
@@ -201,7 +201,7 @@ class JustDoItV1(gym.Env):
         #print(self.past_distance_deltas_torso)
         if(torso_loc_tuple in self.past_distance_deltas_torso and arm_loc_tuple in self.past_distance_deltas_armR):
             #print("PENALTY ACCRUED")
-            reward += -10
+            reward += -20
             
                 #print("HERE")
         self.past_distance_deltas_torso.add(tuple(self.climbr.torso.location))

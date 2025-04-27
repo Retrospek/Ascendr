@@ -101,13 +101,6 @@ class UNOarm_sign_based(nn.Module):
 
         image = input[:, :self.gridDim * self.gridDim].view(batch_size, 1, self.gridDim, self.gridDim)
 
-        """
-        dense = input[:, self.gridDim * self.gridDim:]
-
-        lin = self.relu(self.fc1(dense))
-        lin = self.relu(self.fc2(lin))
-        """
-
         conv = self.pool(self.relu(self.conv1(image)))
         conv = self.pool2(self.relu(self.conv2(conv)))
         conv = torch.flatten(conv, start_dim=1)
@@ -115,8 +108,6 @@ class UNOarm_sign_based(nn.Module):
         conv = self.relu(self.convfc2(conv))
         conv = self.relu(self.convfc3(conv))
 
-        output = self.convfc4_solo(conv)
-        print(output.shape)
-        #combined_output = torch.cat((conv, lin), dim=1)
-        #output = self.combined_pred(combined_output)
+        output = self.convfc4_solo(conv) # Leave as a linear output otherwise you're breaking the Bellman Equation Assumption that the q values are non-scaled
+    
         return output

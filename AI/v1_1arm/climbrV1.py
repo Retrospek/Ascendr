@@ -13,7 +13,7 @@ class armV1():
 
     def grab(self, holds): # Need to make sure that the hand is close to a hold or "enough"
         for hold in holds:
-            if np.linalg.norm(self.location - hold) < 2:
+            if np.linalg.norm(self.location - hold) < 0.75:
                 self.grabbing = True
 
     def release(self):

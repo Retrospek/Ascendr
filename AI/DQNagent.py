@@ -68,9 +68,7 @@ def train(policy_network, target_network,
         # Reset the environment and get the initial observation; flatten it.
         start_state, _ = env.reset()
         current_state = flatten(env.observation_space, start_state)  # current_state is a flat numpy array
-
         for t in range(400):  
-            
             action_epsilon_chance = np.random.rand()
 
             if action_epsilon_chance < epsilon:
@@ -181,10 +179,10 @@ target_net.load_state_dict(policy_net.state_dict())  # Copy the weights from the
 if __name__ == "__main__":
     # 2.) Training Loop
     episodes = 75
-    BATCH_SIZE = 32
+    BATCH_SIZE = 16
     GAMMA = 0.75
     EPSILON_START = 0.995
-    EPSILON_END = 0.135
+    EPSILON_END = 0.15
     EPSILON_DECAY = 800
     LR = 1.1e-3
     CRITERION = nn.SmoothL1Loss()
@@ -197,7 +195,7 @@ if __name__ == "__main__":
         epsilon=EPSILON_START, epsilon_end = EPSILON_END, epsilon_decay=EPSILON_DECAY,
         gamma=GAMMA,
         criterion=CRITERION, optimizer=OPTIMIZER,
-        gridDim=50,
+        gridDim=30,
         env = JustDoItV1()
     )
 
