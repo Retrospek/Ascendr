@@ -8,10 +8,10 @@ from gymnasium.spaces.utils import flatten
 
 # <><><>><><><><><><><> SWAP THESE FOR CUSTOM EVALUATION<><><><><><><>#
 from v1_1arm.V1env import JustDoItV1 
-from DQNmodels import UNOarm  # Import your network definition
+from DQNmodels import UNOarm, UNOarm_sign_based  # Import your network definition
 # <><><>><><><><><><><><><><><><><><><><><>><><><><><><><><><><><><><>#
 
-model_dict_path = 'AI/v1_1arm/policy_state_dict.pth'
+model_dict_path = 'policy_state_dict_test.pth'
 
 plt.ioff()  # Disable interactive mode to prevent extra windows
 
@@ -37,7 +37,7 @@ if __name__ == "__main__":
     accum_reward = 0
     rewards = []
     done = False
-    epsilon = 0.001
+    epsilon = 0
 
     # Create a separate figure for reward animation
     fig, ax = plt.subplots()

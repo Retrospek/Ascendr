@@ -1,10 +1,10 @@
 import gymnasium as gym
 import numpy as np
-from climbrV1 import climbrV1
+from v1_1arm.climbrV1 import climbrV1
 import math
 import matplotlib.pyplot as plt
 class JustDoItV1(gym.Env):
-    def __init__(self, gridDim = 30, holds = np.column_stack((np.full((100,), 15), np.linspace(0, 30, 100, endpoint=False))), angleChange = 10, energy=500):
+    def __init__(self, gridDim = 30, holds = np.column_stack((15 + 1.5 * np.sin(np.linspace(0, 4 * np.pi, 100)), np.linspace(0, 30, 100, endpoint=False))), angleChange = 10, energy=500):
         self.gridDim = gridDim
         self.angleChange = angleChange
         target_idx = np.random.randint(0, len(holds))
@@ -79,6 +79,10 @@ class JustDoItV1(gym.Env):
         # Now I need to reset the environment from above
         self.climbr = climbrV1()
         self.target_hold = self.holds[-1]
+
+        self.past_distance_deltas_torso = set()
+        self.past_distance_deltas_armR   = set()
+
         self.rewards = []
         self.energy = self.climbr.energy
         
@@ -139,8 +143,8 @@ class JustDoItV1(gym.Env):
             boost = cosine_sim * 10
             if(boost < 0):
                 boost /=2
-            print(f"Boost: {boost}")
-            reward += 15 + boost
+            #print(f"Boost: {boost}")
+            reward += 5 + boost
 
         elif action == 1:
             self.climbr.arms[0].release()           
@@ -159,14 +163,14 @@ class JustDoItV1(gym.Env):
             if(boost < 0):
                 boost /=2
             #print(f"Boost: {boost}")
-            reward += 15 - boost
+            reward += 5 - boost
 
         elif action == 2:
             self.climbr.shift_arm(0, self.angleChange)
         elif action == 3:
             self.climbr.shift_arm(0, -1 * self.angleChange)
 
-        reward += -2
+        reward += -10
 
         #Incorporating a average limb and torso accumalated difference to target
         original_distance_from_target_TORSO = self.inner_state['distance_from_target_TORSO']
@@ -185,7 +189,7 @@ class JustDoItV1(gym.Env):
         if(np.sign(average_body_delta) < 0):
             reward += -25
         elif(np.sign(average_body_delta) > 0):
-            reward += 100
+            reward += 50
         #reward += 50 * np.sign(average_body_delta) * np.sqrt(torso_distance_delta**2 + arm_distance_delta**2) # -1 is makes it better for the negative delta because that means closer
 
         # Discourages to be the same distance away 
@@ -193,9 +197,11 @@ class JustDoItV1(gym.Env):
         
         torso_loc_tuple = tuple(self.climbr.torso.location)
         arm_loc_tuple = tuple(self.climbr.arms[0].location)
+        #print(self.past_distance_deltas_armR)
+        #print(self.past_distance_deltas_torso)
         if(torso_loc_tuple in self.past_distance_deltas_torso and arm_loc_tuple in self.past_distance_deltas_armR):
-            if action == 2 or action == 3:
-                reward += -10
+            #print("PENALTY ACCRUED")
+            reward += -10
             
                 #print("HERE")
         self.past_distance_deltas_torso.add(tuple(self.climbr.torso.location))
@@ -241,9 +247,7 @@ class JustDoItV1(gym.Env):
 
         self.rewards.append(reward) #For Future Analysis
         
-        print((action, reward), end="|..........|")
-
-
+        print(f"#### ACTION: {action} => REWARD: {reward} ####")
 
         return self.inner_state, reward, end, {}, {}
 

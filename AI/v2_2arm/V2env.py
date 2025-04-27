@@ -170,15 +170,23 @@ class JustDoItV2(gym.Env):
         torso_distance_delta = original_distance_from_target_TORSO - new_distance_from_target_TORSO
 
 
-        original_distance_from_target_ARM = self.inner_state['distance_from_target_ARMS']
-        new_distance_from_target_ARM = np.linalg.norm(self.target_hold - self.climbr.arms[0].location)
-        arm_distance_delta = original_distance_from_target_ARM - new_distance_from_target_ARM
+        n_arms = len(self.climbr.arms)
+        total_arm_distance_delta = 0
+        for arm in self.climbr.arms:
+            original_distance_from_target_ARM = self.inner_state['distance_from_target_ARMS']
+            new_distance_from_target_ARM = np.linalg.norm(self.target_hold - arm.location)
+            print(original_distance_from_target_ARM)
+            print(new_distance_from_target_ARM)
+            total_arm_distance_delta += original_distance_from_target_ARM - new_distance_from_target_ARM
+            print(total_arm_distance_delta)
 
-        average_body_delta = (torso_distance_delta + arm_distance_delta) / 2.0
+        avg_arm_distance_delta = total_arm_distance_delta / n_arms
+        average_climbr_delta = (torso_distance_delta + avg_arm_distance_delta) / 2.0
 
-        if(np.sign(average_body_delta) < 0):
+        print(f"AADD: {avg_arm_distance_delta}")
+        if(np.sign(average_climbr_delta) < 0):
             reward += -25
-        elif(np.sign(average_body_delta) > 0):
+        elif(np.sign(average_climbr_delta) > 0):
             reward += 100
         #reward += 50 * np.sign(average_body_delta) * np.sqrt(torso_distance_delta**2 + arm_distance_delta**2) # -1 is makes it better for the negative delta because that means closer
 
@@ -229,7 +237,7 @@ class JustDoItV2(gym.Env):
         self.inner_state['torso_location'] = self.climbr.torso.location
         self.inner_state['arm_locations'] = self.climbr.arms[0].location
         self.inner_state["arm_grabbing_status"] = np.array([self.climbr.arms[i].grabbing for i in range(len(self.climbr.arms))], dtype=np.int8),
-        self.inner_state['average_distance_delta'] = average_body_delta
+        self.inner_state['average_distance_delta'] = average_climbr_delta
         self.inner_state['distance_from_target_TORSO'] = np.linalg.norm(self.target_hold - self.climbr.torso.location)
         self.inner_state['distance_from_target_ARMS'] = np.linalg.norm(self.target_hold - self.climbr.arms[0].location)
 

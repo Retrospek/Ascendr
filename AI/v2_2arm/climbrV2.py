@@ -46,7 +46,7 @@ class climbrV2:
             arm_angle = self.arms[side].angle
             self.arms[side].location = np.array([self.torso.location[0] + self.arms[side].length * np.cos(arm_angle), self.torso.location[1] + self.arms[side].length * np.sin(arm_angle)])
         else: # If we are in fact grabbing we want to make  
-            if(opposing_arm[0].grabbing == False): # Because of course you can't rotate if your other arms is also grabbing
+            if(self.arms[opposing_arm[0]].grabbing == False): # Because of course you can't rotate if your other arms is also grabbing
                 theta *= -1
                 # Now we need to shift every point around the limb that's rotating itself kind of when grabbing
                 # Must use initial torso position to find the rotating limb's initial position

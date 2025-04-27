@@ -9,7 +9,7 @@ from v2_2arm.V2env import JustDoItV2
 np.set_printoptions(threshold=np.inf, linewidth=200)
 
 if __name__ == "__main__":
-    env = JustDoItV2()
+    env = JustDoItV1()
 
     obs, _ = env.reset()
     state = flatten(env.observation_space, obs)  

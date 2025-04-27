@@ -8,7 +8,7 @@ from gymnasium.spaces import flatten_space
 from gymnasium.spaces.utils import flatten
 
 # Model Include
-from AI.DQNmodels import UNOarm
+from DQNmodels import UNOarm_sign_based, UNOarm
 
 import torch
 import torch.nn as nn
@@ -174,21 +174,21 @@ state_dim = flattened_obs_space.shape[0]
 #print(f"State Dim: {state_dim}")
 #print(f"Action Dim: {action_dim}")
 
-policy_net = UNOarm(state_dim=state_dim, action_dim=action_dim, gridDim=30).to(device)
-target_net = UNOarm(state_dim=state_dim, action_dim=action_dim, gridDim=30).to(device)
+policy_net = UNOarm_sign_based(state_dim=state_dim, action_dim=action_dim, gridDim=30).to(device)
+target_net = UNOarm_sign_based(state_dim=state_dim, action_dim=action_dim, gridDim=30).to(device)
 target_net.load_state_dict(policy_net.state_dict())  # Copy the weights from the policy network to the target network
 
 if __name__ == "__main__":
     # 2.) Training Loop
     episodes = 75
     BATCH_SIZE = 32
-    GAMMA = 0.7
+    GAMMA = 0.75
     EPSILON_START = 0.995
     EPSILON_END = 0.135
     EPSILON_DECAY = 800
     LR = 1.1e-3
     CRITERION = nn.SmoothL1Loss()
-    OPTIMIZER = optim.AdamW(policy_net.parameters(), lr=LR, amsgrad=True)
+    OPTIMIZER = optim.Adam(policy_net.parameters(), lr=LR, amsgrad=True)
 
     policy_network, target_network, all_reward_sequences = train(
         policy_network=policy_net, target_network=target_net,
@@ -202,10 +202,10 @@ if __name__ == "__main__":
     )
 
     def save_models():
-        torch.save(target_network.state_dict(), 'target_state_dict.pth')
-        torch.save(target_network, 'target_model.pth')
-        torch.save(policy_network.state_dict(), 'policy_state_dict.pth')
-        torch.save(policy_network, 'policy_network.pth')
+        torch.save(target_network.state_dict(), 'target_state_dict_test.pth')
+        torch.save(target_network, 'target_model_test.pth')
+        torch.save(policy_network.state_dict(), 'policy_state_dict_test.pth')
+        torch.save(policy_network, 'policy_network_test.pth')
 
     save_models()
 
