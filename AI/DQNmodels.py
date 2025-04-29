@@ -59,7 +59,6 @@ class UNOarm(nn.Module):
         conv = self.relu(self.convfc3(conv))
 
         output = self.relu(self.convfc4_solo(conv))
-        print(output.shape)
         #combined_output = torch.cat((conv, lin), dim=1)
         #output = self.combined_pred(combined_output)
         return output
@@ -79,7 +78,7 @@ class UNOarm_sign_based(nn.Module):
 
         self.gridDim = gridDim
 
-        self.conv1 = nn.Conv2d(1, 16, kernel_size=5)
+        self.conv1 = nn.Conv2d(1, 16, kernel_size=6)
         self.conv2 = nn.Conv2d(16, 32, kernel_size=3)
         self.pool = nn.MaxPool2d(2, stride=2)
         self.pool2 = nn.MaxPool2d(2, stride=2)
@@ -88,12 +87,6 @@ class UNOarm_sign_based(nn.Module):
         self.convfc3 = nn.Linear(256, 128)
         self.convfc4_solo = nn.Linear(128, action_dim)
 
-        self.fc1 = nn.Linear(state_dim - gridDim ** 2, 256) # should be the start but for the sake of running imma hardcode
-        self.fc2 = nn.Linear(256, 64)
-        self.fc3_solo = nn.Linear(64, action_dim)
-
-        self.combined_pred = nn.Linear(128, action_dim)
-
         self.relu = nn.ReLU()
 
     def forward(self, input):
@@ -101,12 +94,12 @@ class UNOarm_sign_based(nn.Module):
 
         image = input[:, :self.gridDim * self.gridDim].view(batch_size, 1, self.gridDim, self.gridDim)
 
-        conv = self.pool(self.relu(self.conv1(image)))
-        conv = self.pool2(self.relu(self.conv2(conv)))
+        conv = self.pool(self.conv1(image))
+        conv = self.pool2(self.conv2(conv))
         conv = torch.flatten(conv, start_dim=1)
-        conv = self.relu(self.convfc1(conv))
-        conv = self.relu(self.convfc2(conv))
-        conv = self.relu(self.convfc3(conv))
+        conv = self.convfc1(conv)
+        conv = self.convfc2(conv)
+        conv = self.convfc3(conv)
 
         output = self.convfc4_solo(conv) # Leave as a linear output otherwise you're breaking the Bellman Equation Assumption that the q values are non-scaled
     

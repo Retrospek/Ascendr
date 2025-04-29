@@ -16,7 +16,7 @@ import torch.optim as optim
 import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
 
-writer = SummaryWriter(log_dir='./runs/experiment_1')
+#writer = SummaryWriter(log_dir='./runs/experiment_1')
 
 from tqdm import tqdm
 import matplotlib.pyplot as plt
@@ -53,22 +53,19 @@ class ReplayMemory(object):
 
 def train(policy_network, target_network,
           episodes, batch_size, 
-          epsilon, epsilon_end, epsilon_decay, gamma, criterion, optimizer,
-          gridDim, env):
+          epsilon, epsilon_end, epsilon_decay, gamma, criterion, optimizer, 
+          env):
 
-    all_reward_sequences = []  # For graphing down the line
+    episodic_rewards = []  # For graphing down the line
     replaysampler = ReplayMemory(capacity=1500)
     for episode in range(episodes):
         accumulated_reward = 0
 
-        writer.add_scalar('Reward/Episode', accumulated_reward, episode)
-
-        episode_reward = []  # Start an empty list for episode rewards
+        #writer.add_scalar('Reward/Episode', accumulated_reward, episode)
         
-        # Reset the environment and get the initial observation; flatten it.
         start_state, _ = env.reset()
         current_state = flatten(env.observation_space, start_state)  # current_state is a flat numpy array
-        for t in range(400):  
+        for t in range(500):  
             action_epsilon_chance = np.random.rand()
 
             if action_epsilon_chance < epsilon:
@@ -118,26 +115,24 @@ def train(policy_network, target_network,
                 optimizer.step()
 
             accumulated_reward += reward
-            episode_reward.append(accumulated_reward)
             
             # Update current state with the new flattened observation.
             current_state = next_state_flat
 
             if end:
                 break
+        
+        print(f"EPISODE: {episode}, EPSILON: {epsilon}, REWARD_TOTAL(eps): {accumulated_reward}\n")
 
         epsilon = epsilon_end + (epsilon - epsilon_end) * math.exp(-1. * t / epsilon_decay)
-        """
-        EPS_END + (EPS_START - EPS_END) * \
-        math.exp(-1. * steps_done / EPS_DECAY)
-        """
+        episodic_rewards.append(accumulated_reward)
+
         #gamma *= gamma_decay  Note: Typically gamma remains fixed; adjust as needed.
+        if(episode%10 == 0):
+            target_network.load_state_dict(policy_network.state_dict())
+    #writer.close()
 
-        all_reward_sequences.append(episode_reward)
-        target_network.load_state_dict(policy_network.state_dict())
-    writer.close()
-
-    return policy_network, target_network, all_reward_sequences
+    return policy_network, target_network, episodic_rewards
 
 def moving_average(data, window_size=10):
         """Compute the moving average with a given window size."""
@@ -173,56 +168,59 @@ state_dim = flattened_obs_space.shape[0]
 #print(f"Action Dim: {action_dim}")
 
 policy_net = UNOarm_sign_based(state_dim=state_dim, action_dim=action_dim, gridDim=30).to(device)
+policy_net.load_state_dict("target_state_dict_test.pth")
 target_net = UNOarm_sign_based(state_dim=state_dim, action_dim=action_dim, gridDim=30).to(device)
 target_net.load_state_dict(policy_net.state_dict())  # Copy the weights from the policy network to the target network
 
 if __name__ == "__main__":
     # 2.) Training Loop
-    episodes = 75
-    BATCH_SIZE = 16
+    episodes = 500
+    BATCH_SIZE = 64
     GAMMA = 0.75
-    EPSILON_START = 0.995
-    EPSILON_END = 0.15
-    EPSILON_DECAY = 800
-    LR = 1.1e-3
+    EPSILON_START = 0.9995
+    EPSILON_END = 0.01
+    EPSILON_DECAY = 30000
+    LR = 1.5e-4
     CRITERION = nn.SmoothL1Loss()
     OPTIMIZER = optim.Adam(policy_net.parameters(), lr=LR, amsgrad=True)
+    
+    print("Starting Training...")
 
-    policy_network, target_network, all_reward_sequences = train(
+    policy_network, target_network, reward_sequences = train(
         policy_network=policy_net, target_network=target_net,
         episodes=episodes,
         batch_size=BATCH_SIZE,
         epsilon=EPSILON_START, epsilon_end = EPSILON_END, epsilon_decay=EPSILON_DECAY,
         gamma=GAMMA,
         criterion=CRITERION, optimizer=OPTIMIZER,
-        gridDim=30,
         env = JustDoItV1()
     )
 
     def save_models():
-        torch.save(target_network.state_dict(), 'target_state_dict_test.pth')
-        torch.save(target_network, 'target_model_test.pth')
-        torch.save(policy_network.state_dict(), 'policy_state_dict_test.pth')
-        torch.save(policy_network, 'policy_network_test.pth')
+        torch.save(target_network.state_dict(), 'AI/v1_1arm/v3_models/target_state_dict_test.pth')
+        torch.save(target_network, 'AI/v1_1arm/v3_models/target_model_test.pth')
+        torch.save(policy_network.state_dict(), 'AI/v1_1arm/v3_models/policy_state_dict_test.pth')
+        torch.save(policy_network, 'AI/v1_1arm/v3_models/policy_network_test.pth')
 
     save_models()
 
+    plt.close('all')   # closes any old figures
+
+    ma = moving_average(reward_sequences, window_size=10)
+
     plt.figure(figsize=(12, 8))
-    # Use a colormap to generate distinct colors for each episode
-    num_episodes = 40
-    colors = plt.cm.viridis(np.linspace(0, 1, num_episodes))
 
-    # Plot the moving average for the last 40 episodes using line graphs
-    for episode_idx, episode_rewards in enumerate(all_reward_sequences[-num_episodes:]):
-        ma = moving_average(episode_rewards, window_size=10)
-        x_vals = np.arange(len(ma))
-        plt.plot(x_vals, ma, label=f"Episode {episode_idx+1}", color=colors[episode_idx], linewidth=2)
+    plt.plot(reward_sequences, label='Episode Reward')
 
-    plt.xlabel("Time Step", fontsize=14)
-    plt.ylabel("Moving Average of Cumulative Reward", fontsize=14)
-    plt.title("Moving Average Line Plot for Each Episode", fontsize=16)
-    plt.legend(loc="upper left", fontsize=10, ncol=2)
+    plt.plot(range(len(ma)), ma, label='10‐Episode Moving Avg')
+
+    plt.xlabel("Episode", fontsize=14)
+    plt.ylabel("Cumulative Reward", fontsize=14)
+    plt.title("Training Performance Over Episodes", fontsize=16)
     plt.grid(True, which="both", linestyle="--", linewidth=0.5)
-    plt.tight_layout()  # Adjust layout to prevent clipping of labels
-    plt.savefig("Rewards.png", dpi=300)
+
+    plt.legend(loc="upper left", fontsize=12)
+
+    plt.tight_layout()
+    plt.savefig("AI/v1_1arm/v3_models/Rewards.png", dpi=300)
     plt.show()
