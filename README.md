@@ -6,6 +6,10 @@ Ascendr is a climbing simulation environment built on top of [Gymnasium](https:/
 https://github.com/user-attachments/assets/359016dd-8d1a-49f2-9488-fc55400a9da7
 
 
+
+https://github.com/user-attachments/assets/602079c9-ffea-47e6-a16d-e193a47bb91b
+
+
 ## Features
 
 - **Custom Gym Environment**: Implements the `JustDoIt` environment with a discrete action space.
