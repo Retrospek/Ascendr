@@ -4,7 +4,6 @@ import torch
 import random
 from gymnasium.spaces.utils import flatten
 from v1_1arm.V1env import JustDoItV1
-from v2_2arm.V2env import JustDoItV2
 
 np.set_printoptions(threshold=np.inf, linewidth=200)
 

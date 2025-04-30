@@ -174,7 +174,7 @@ target_net.load_state_dict(policy_net.state_dict())  # Copy the weights from the
 
 if __name__ == "__main__":
     # 2.) Training Loop
-    episodes = 500
+    episodes = 250
     BATCH_SIZE = 64
     GAMMA = 0.75
     EPSILON_START = 0.9995

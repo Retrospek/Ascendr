@@ -60,7 +60,7 @@ if __name__ == "__main__":
         return line,
 
     ani = FuncAnimation(fig, animate, frames=len(rewards), interval=200, blit=True)
-    ani.save('reward_progress.gif', writer='pillow', fps=30)
+    ani.save('AI/v1_1arm/v3_models/reward_progress.gif', writer='pillow', fps=30)
 
     plt.close(fig)
     fig_static, ax_static = plt.subplots()

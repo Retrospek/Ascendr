@@ -4,7 +4,7 @@ from v1_1arm.climbrV1 import climbrV1
 import math
 import matplotlib.pyplot as plt
 class JustDoItV1(gym.Env):
-    def __init__(self, gridDim = 30, holds = np.unique(np.rint(np.column_stack((15 + 1.5*np.sin(np.linspace(0, 4*np.pi, 100)), np.linspace(0, 29, 100, endpoint=False)))).astype(int), axis=0),
+    def __init__(self, gridDim = 30, holds = np.unique(np.rint(np.column_stack((15 + 3*np.sin(np.linspace(0, 4*np.pi, 100)), np.linspace(0, 29, 100, endpoint=False)))).astype(int), axis=0),
                   angleChange = 10, energy=500):
         self.gridDim = gridDim
         self.angleChange = angleChange
